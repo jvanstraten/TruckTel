@@ -42,7 +42,9 @@ private:
 public:
     /// Constructs the logger.
     explicit Logger(const scs_log_t game_log_callback) : game_log_callback(game_log_callback) {
-        log_file.open("plugins/trucktel.txt", std::ios_base::in | std::ios_base::out);
+        const auto log_path = std::filesystem::current_path() / "plugins" / "trucktel.txt";
+        logf(SCS_LOG_TYPE_message, "TruckTel is logging to %s", log_path.c_str());
+        log_file.open(log_path.c_str(), std::ios_base::in | std::ios_base::out);
     }
 
     /// Destroys the logger.
@@ -95,10 +97,14 @@ std::unique_ptr<Logger> logger;
 
 // Convenience macros for logging messages. These are nop when no logger is
 // present.
-#define VERBOSE(msg, ...) do { if (logger) { logger->log##__VA_OPT__(f)(SCS_LOG_TYPE_verbose, msg __VA_OPT__(,) __VA_ARGS__); } } while (false)
-#define INFO(msg, ...) do { if (logger) { logger->log##__VA_OPT__(f)(SCS_LOG_TYPE_message, msg __VA_OPT__(,) __VA_ARGS__); } } while (false)
-#define WARN(msg, ...) do { if (logger) { logger->log##__VA_OPT__(f)(SCS_LOG_TYPE_warning, msg __VA_OPT__(,) __VA_ARGS__); } } while (false)
-#define ERROR(msg, ...) do { if (logger) { logger->log##__VA_OPT__(f)(SCS_LOG_TYPE_error, msg __VA_OPT__(,) __VA_ARGS__); } } while (false)
+#define VERBOSE(msg) do { if (logger) { logger->log(SCS_LOG_TYPE_verbose, msg); } } while (false)
+#define VERBOSEF(msg, ...) do { if (logger) { logger->logf(SCS_LOG_TYPE_verbose, msg, __VA_ARGS__); } } while (false)
+#define INFO(msg) do { if (logger) { logger->log(SCS_LOG_TYPE_message, msg); } } while (false)
+#define INFOF(msg, ...) do { if (logger) { logger->logf(SCS_LOG_TYPE_message, msg, __VA_ARGS__); } } while (false)
+#define WARN(msg) do { if (logger) { logger->log(SCS_LOG_TYPE_warning, msg); } } while (false)
+#define WARNF(msg, ...) do { if (logger) { logger->logf(SCS_LOG_TYPE_warning, msg, __VA_ARGS__); } } while (false)
+#define ERROR(msg) do { if (logger) { logger->log(SCS_LOG_TYPE_error, msg); } } while (false)
+#define ERRORF(msg, ...) do { if (logger) { logger->logf(SCS_LOG_TYPE_error, msg, __VA_ARGS__); } } while (false)
 
 /// Assigns data to the hierarchical key identified by path in json. The
 /// path separator is a period. This tries to be smarter than it really
@@ -563,7 +569,7 @@ std::unique_ptr<Recorder> recorder;
     try { \
         body \
     } catch (std::exception &e) { \
-        ERROR("exception: %s", e.what()); \
+        ERRORF("exception: %s", e.what()); \
     } catch (...) { \
         ERROR("bad exception"); \
     } \
@@ -574,7 +580,7 @@ std::unique_ptr<Recorder> recorder;
     try { \
         body \
     } catch (std::exception &e) { \
-        ERROR("exception: %s", e.what()); \
+        ERRORF("exception: %s", e.what()); \
         return SCS_RESULT_generic_error; \
     } catch (...) { \
         ERROR("bad exception"); \
@@ -601,8 +607,9 @@ SCSAPI_VOID scs_paused(const scs_event_t event, const void *const event_info, co
     recorder->frame.pause();
     recorder->gameplay.push({{"_", "paused"}});
 
-    VERBOSE("last frame before pause: %s", recorder->frame.poll_json_scs().dump().c_str());
-    VERBOSE("configuration: %s", recorder->config.poll().dump().c_str());
+    VERBOSE("Simulation paused!");
+    VERBOSEF("Last frame before pause: %s", recorder->frame.poll_json_scs().dump().c_str());
+    VERBOSEF("Configuration: %s", recorder->config.poll().dump().c_str());
 )
 
 /// Unpause event handler.
@@ -610,6 +617,8 @@ SCSAPI_VOID scs_started(const scs_event_t event, const void *const event_info, c
     if (!recorder) return;
     recorder->frame.unpause();
     recorder->gameplay.push({{"_", "started"}});
+
+    VERBOSE("Simulation started!");
 )
 
 /// Configuration event handler.
@@ -618,7 +627,6 @@ SCSAPI_VOID scs_configuration(const scs_event_t event, const void *const event_i
     if (!event_info) return;
     const auto scs_data = static_cast<const scs_telemetry_configuration_t*>(event_info);
     nlohmann::json json_data = scs_attributes_to_json(scs_data->attributes);
-    INFO("config %s: %s", scs_data->id, json_data.dump().c_str());
     recorder->config.push(scs_data->id, std::move(json_data));
 )
 
@@ -629,7 +637,7 @@ SCSAPI_VOID scs_gameplay(const scs_event_t event, const void *const event_info, 
     const auto scs_data = static_cast<const scs_telemetry_gameplay_event_t*>(event_info);
     nlohmann::json json_data = scs_attributes_to_json(scs_data->attributes);
     json_data["_"] = scs_data->id;
-    INFO("gameplay event: %s", json_data.dump().c_str());
+    VERBOSEF("Gameplay event: %s", json_data.dump().c_str());
     recorder->gameplay.push(std::move(json_data));
 )
 
@@ -638,7 +646,7 @@ SCSAPI_VOID scs_gameplay(const scs_event_t event, const void *const event_info, 
 /// basic recording of values.
 SCSAPI_VOID scs_channel(const scs_string_t name, const scs_u32_t index, const scs_value_t *const value, const scs_context_t context) API_CATCH (
     if (!recorder) return;
-    const auto channel_index = reinterpret_cast<unsigned long>(context);
+    const auto channel_index = reinterpret_cast<uintptr_t>(context);
     scs_value_t value_copy {};
     if (value) {
         value_copy = *value;
@@ -656,7 +664,7 @@ void register_event_handler(
 ) {
     const auto result = init_params->register_for_event(event, callback, nullptr);
     if (result != SCS_RESULT_ok) {
-        WARN("failed to register event %d: code %d", event, result);
+        WARNF("failed to register event %d: code %d", event, result);
     }
 }
 
@@ -681,7 +689,7 @@ void register_channel_handler(
         if (metadata.scs_index != SCS_U32_NIL) {
             name += "[" + std::to_string(metadata.scs_index) + "]";
         }
-        WARN("failed to register channel %s (type %d): code %d", name.c_str(), metadata.scs_type, result);
+        WARNF("failed to register channel %s (type %d): code %d", name.c_str(), metadata.scs_type, result);
     }
 }
 
@@ -715,8 +723,6 @@ SCSAPI_RESULT scs_telemetry_init(
     const auto *init_params = reinterpret_cast<const scs_telemetry_init_params_v101_t *>(params);
     logger = std::make_unique<Logger>(init_params->common.log);
     recorder = std::make_unique<Recorder>();
-
-    WARN("user knows enough to be dangerous");
 
     // Push basic game information.
     recorder->game.push("game_id", init_params->common.game_id);
@@ -879,12 +885,13 @@ SCSAPI_RESULT scs_telemetry_init(
         register_trailer_handler(init_params, {SCS_TELEMETRY_TRAILER_CHANNEL_wheel_lift_offset, wheel_index, SCS_VALUE_TYPE_float});
     }
 
+    INFO("TruckTel loaded");
     return SCS_RESULT_ok;
 )
 
 /// SCS API cleanup handler.
 SCSAPI_VOID scs_telemetry_shutdown() API_CATCH (
-    INFO("shutdown");
+    INFO("TruckTel shutdown");
     logger.reset();
     recorder.reset();
 )

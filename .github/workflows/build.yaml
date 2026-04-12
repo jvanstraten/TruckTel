@@ -1,0 +1,36 @@
+name: CMake
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Create Build Environment
+      run: cmake -E make_directory ${{github.workspace}}/build
+
+    - name: Configure
+      run: cmake -S ${{github.workspace}} -B ${{github.workspace}}/build
+
+    - name: Build
+      run: cmake --build ${{github.workspace}}/build --config Release
+
+    - name: Upload (Windows)
+      if: ${{ matrix.os == 'windows-latest' }}
+      uses: actions/upload-artifact@v7
+      with:
+        name: output-windows
+        path: build\Release\trucktel.dll
+
+    - name: Upload (Linux)
+      uses: actions/upload-artifact@v7
+      if: ${{ matrix.os == 'ubuntu-latest' }}
+      with:
+        name: output-linux
+        path: build/libtrucktel.so
