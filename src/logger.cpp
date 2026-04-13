@@ -1,6 +1,5 @@
 #include "logger.h"
 
-// Standard libraries.
 #include <cstdarg>
 #include <cstdlib>
 #include <filesystem>

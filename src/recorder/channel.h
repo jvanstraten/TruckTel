@@ -1,14 +1,15 @@
 #pragma once
 
-// Standard libraries.
 #include <mutex>
+
+#include <scssdk_value.h>
+
 #include <string>
 #include <vector>
 
-// Dependencies.
-#include <nlohmann/json.hpp>
 #include <scssdk_telemetry_event.h>
-#include <scssdk_value.h>
+
+#include <nlohmann/json.hpp>
 
 /// Metadata for channels.
 struct ChannelMetadata {

@@ -1,13 +1,11 @@
 #include "recorder.h"
 
-// Dependencies.
 #include <common/scssdk_telemetry_common_channels.h>
 #include <common/scssdk_telemetry_common_configs.h>
 #include <common/scssdk_telemetry_job_common_channels.h>
 #include <common/scssdk_telemetry_trailer_common_channels.h>
 #include <common/scssdk_telemetry_truck_common_channels.h>
 
-// Private headers.
 #include "json_utils.h"
 #include "logger.h"
 

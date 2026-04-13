@@ -1,10 +1,8 @@
 #pragma once
 
-// Standard libraries.
 #include <cstdint>
 #include <mutex>
 
-// Dependencies.
 #include <nlohmann/json.hpp>
 
 /// Recorder for data that does not change often, and is reported to clients

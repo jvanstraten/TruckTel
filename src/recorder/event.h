@@ -1,12 +1,10 @@
 #pragma once
 
-// Standard libraries.
 #include <chrono>
 #include <cstdint>
 #include <list>
 #include <mutex>
 
-// Dependencies.
 #include <nlohmann/json.hpp>
 
 /// Recorder for a stream of events that should be delivered to clients

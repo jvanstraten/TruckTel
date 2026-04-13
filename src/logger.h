@@ -1,6 +1,5 @@
 #pragma once
 
-// Standard libraries.
 #include <fstream>
 #include <memory>
 #include <mutex>
@@ -9,7 +8,6 @@
 #include <thread>
 #include <utility>
 
-// Dependencies.
 #include <scssdk_telemetry.h>
 
 /// Singleton class for logging.

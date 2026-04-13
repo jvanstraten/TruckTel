@@ -1,8 +1,8 @@
 #pragma once
 
-// Dependencies.
-#include <nlohmann/json.hpp>
 #include <scssdk_value.h>
+
+#include <nlohmann/json.hpp>
 
 /// Assigns data to the hierarchical key identified by path in json. The
 /// path separator is a period. This tries to be smarter than it really

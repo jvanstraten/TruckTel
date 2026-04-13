@@ -1,4 +1,3 @@
-// Standard libraries.
 #include <array>
 #include <cstdio>
 #include <cstdlib>
@@ -9,13 +8,13 @@
 #include <mutex>
 #include <vector>
 
-// Dependencies.
-#include "nlohmann/json.hpp"
 #include "scssdk_telemetry.h"
 
-// Private headers.
+#include "nlohmann/json.hpp"
+
 #include "logger.h"
 #include "recorder/recorder.h"
+#include "server.h"
 
 /// SCS API initialization callback. This is the entry point that ETS2/ATS
 /// calls.
@@ -29,6 +28,7 @@ SCSAPI_RESULT scs_telemetry_init(
     try {
         Logger::init(init_params->common.log);
         Recorder::init(version, init_params);
+        Server::init();
         Logger::info("Init complete");
         return SCS_RESULT_ok;
     } catch (std::exception &e) {
@@ -39,7 +39,9 @@ SCSAPI_RESULT scs_telemetry_init(
 
 /// SCS API cleanup handler.
 SCSAPI_VOID scs_telemetry_shutdown() {
-    Logger::info("Shutdown");
+    Logger::info("Waiting for server to shut down");
+    Server::shutdown();
+    Logger::info("Shutting down");
     Recorder::shutdown();
     Logger::shutdown();
 }

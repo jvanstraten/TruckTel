@@ -1,12 +1,9 @@
 #pragma once
 
-// Standard libraries.
 #include <memory>
 
-// Dependencies.
 #include <scssdk_telemetry.h>
 
-// Private headers.
 #include "channel.h"
 #include "event.h"
 #include "versioned.h"

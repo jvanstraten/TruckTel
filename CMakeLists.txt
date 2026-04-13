@@ -35,7 +35,9 @@ add_library(trucktel SHARED
         src/recorder/channel.h
         src/recorder/channel.cpp
         src/recorder/recorder.h
-        src/recorder/recorder.cpp)
+        src/recorder/recorder.cpp
+        src/server.h
+        src/server.cpp)
 target_include_directories(trucktel PRIVATE ${SCS_SDK_INCLUDE} src)
 target_link_libraries(trucktel PRIVATE nlohmann_json::nlohmann_json)
 
