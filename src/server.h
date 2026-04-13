@@ -4,14 +4,19 @@
 #include <memory>
 #include <thread>
 
+#include <httplib.h>
+
 /// Class managing a worker thread to run the telemetry server in.
 class Server {
 
     /// Main function for the thread.
     void main();
 
-    /// Shutdown flag for the thread.
-    std::atomic<bool> shutdown_requested = false;
+    /// HTTPLIB server instance.
+    httplib::Server server;
+
+    /// Shutdown request flag, used to shut down open websockets.
+    std::atomic<bool> shutdown_request = false;
 
     /// Thread handle.
     std::thread thread;
