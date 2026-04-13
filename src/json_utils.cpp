@@ -1,0 +1,125 @@
+#include "json_utils.h"
+
+/// Assigns data to the hierarchical key identified by path in json. The
+/// path separator is a period. This tries to be smarter than it really
+/// should be, because the paths used by the SCS API are not uniform enough to
+/// work with a naive implementation: non-leaf paths can have data in them.
+/// Whenever that happens, the data of a non-leaf node is put in a node with
+/// key "_".
+void json_assign_path(nlohmann::json &json, const std::string &path, const nlohmann::json &data) {
+    size_t start = 0;
+    auto json_ptr = &json;
+    while (true) {
+        // If there was already a nontrivial and non-dict value for the level
+        // we're about to index, punt it to a "_" key wrapped inside a
+        // surrounding object. For example, if "cargo" already exists, and
+        // we're trying to set "cargo.mass", the "cargo" key will become
+        // "cargo._".
+        if (!json_ptr->is_object() && !json_ptr->is_null()) {
+            *json_ptr = {{"_", *json_ptr}};
+        }
+
+        // See if there is another separator.
+        const auto pos = path.find('.', start);
+        const auto element = path.substr(start, pos - start);
+        if (pos == std::string::npos) {
+
+            // This is the last path element. If the path already exists and
+            // is an object, put the data in a _ key. This is the complement
+            // of the above: if "cargo.mass" already exists, and we're trying
+            // to set "cargo", the "cargo" key will become "cargo._".
+            if ((*json_ptr)[element].is_object()) {
+                (*json_ptr)[element]["_"] = data;
+            } else {
+                (*json_ptr)[element] = data;
+            }
+            return;
+        }
+
+        // Index the next path element in our JSON structure and continue
+        // with the remainder of the path.
+        json_ptr = &(*json_ptr)[element];
+        start = pos + 1;
+    }
+}
+
+/// Converts an SCS version number to a JSON array.
+nlohmann::json scs_version_to_json(const scs_u32_t version) {
+    return {SCS_GET_MAJOR_VERSION(version), SCS_GET_MINOR_VERSION(version)};
+}
+
+/// Converts an scs_value_t variant into an equivalent JSON form.
+nlohmann::json scs_value_to_json(const scs_value_t &value) {
+    switch (value.type) {
+        case SCS_VALUE_TYPE_bool:
+            return value.value_bool.value ? true : false;
+        case SCS_VALUE_TYPE_s32:
+            return value.value_s32.value;
+        case SCS_VALUE_TYPE_s64:
+            return value.value_s64.value;
+        case SCS_VALUE_TYPE_u32:
+            return value.value_u32.value;
+        case SCS_VALUE_TYPE_u64:
+            return value.value_u64.value;
+        case SCS_VALUE_TYPE_float:
+            return value.value_float.value;
+        case SCS_VALUE_TYPE_double:
+            return value.value_double.value;
+        case SCS_VALUE_TYPE_fvector:
+            return {
+                {"x", value.value_fvector.x},
+                {"y", value.value_fvector.y},
+                {"z", value.value_fvector.z}
+            };
+        case SCS_VALUE_TYPE_dvector:
+            return {
+                {"x", value.value_dvector.x},
+                {"y", value.value_dvector.y},
+                {"z", value.value_dvector.z}
+            };
+        case SCS_VALUE_TYPE_euler:
+            return {
+                {"heading", value.value_euler.heading},
+                {"pitch", value.value_euler.pitch},
+                {"roll", value.value_euler.roll}
+            };
+        case SCS_VALUE_TYPE_fplacement:
+            return {
+                {"x", value.value_fplacement.position.x},
+                {"y", value.value_fplacement.position.y},
+                {"z", value.value_fplacement.position.z},
+                {"heading", value.value_fplacement.orientation.heading},
+                {"pitch", value.value_fplacement.orientation.pitch},
+                {"roll", value.value_fplacement.orientation.roll}
+            };
+        case SCS_VALUE_TYPE_dplacement:
+            return {
+                {"x", value.value_dplacement.position.x},
+                {"y", value.value_dplacement.position.y},
+                {"z", value.value_dplacement.position.z},
+                {"heading", value.value_dplacement.orientation.heading},
+                {"pitch", value.value_dplacement.orientation.pitch},
+                {"roll", value.value_dplacement.orientation.roll}
+            };
+        case SCS_VALUE_TYPE_string:
+            return value.value_string.value;
+        default:
+            return "unknown type " + std::to_string(value.type);
+    }
+}
+
+/// Converts an array of named attributes to a JSON structure.
+nlohmann::json scs_attributes_to_json(const scs_named_value_t *attributes) {
+    if (!attributes) return {};
+    nlohmann::json json{};
+    while (attributes->name) {
+        const auto value = scs_value_to_json(attributes->value);
+        auto key = std::string(attributes->name);
+        if (attributes->index != SCS_U32_NIL) {
+            key += "." + std::to_string(attributes->index);
+        }
+        json_assign_path(json, key, value);
+        ++attributes;
+    }
+    return json;
+}
