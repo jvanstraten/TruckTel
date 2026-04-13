@@ -23,10 +23,15 @@ void Server::main() {
             );
         }
     });
+    server.set_read_timeout(1, 0);
     server.WebSocket(
-        "/ws", [](const httplib::Request &req, httplib::ws::WebSocket &ws) {
+        "/ws", [this](const httplib::Request &req, httplib::ws::WebSocket &ws) {
             std::string msg;
             while (ws.read(msg)) {
+                if (shutdown_request.load()) {
+                    ws.close(httplib::ws::CloseStatus::GoingAway);
+                    return;
+                }
                 Logger::info("echo %s", msg.c_str());
                 ws.send(msg); // Send back the received message as-is
             }
