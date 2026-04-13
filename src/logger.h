@@ -3,7 +3,11 @@
 // Standard libraries.
 #include <fstream>
 #include <memory>
+#include <mutex>
+#include <queue>
 #include <string>
+#include <thread>
+#include <utility>
 
 // Dependencies.
 #include <scssdk_telemetry.h>
@@ -17,11 +21,28 @@ private:
     /// Callback for logging to the game's console.
     const scs_log_t game_log_callback;
 
+    /// The SCS telemetry API only allows calls to it from within the game
+    /// thread, in response to functions from the game. Whether this actually
+    /// also applies to logging is unclear, but we'll assume it does. The
+    /// telemetry API also assures that it will only ever call the game from
+    /// a single thread, so we can keep track of that thread's ID and call
+    /// the game log function only when we're in that thread. Whenever we're
+    /// in another thread, we still write to the log file directly, but queue
+    /// up messages for the in-game log.
+    std::thread::id game_api_thread;
+
+    /// Queue for log messages pending transmission to the game's console.
+    std::queue<std::pair<scs_log_type_t, std::string>> game_log_queue;
+
+    /// Flushes any pending messages in game_log_queue to game_log_callback.
+    /// The logging mutex must already be held.
+    void flush_queue_unlocked();
+
     /// File pointer to a file that also stores all the log messages.
     std::ofstream log_file{};
 
-    /// Instance of the logger, used by static methods.
-    static std::unique_ptr<Logger> instance;
+    /// Mutex for log actions.
+    std::mutex mutex;
 
     /// Logs a message without formatting.
     void log(scs_log_type_t severity, const std::string &message);
@@ -32,6 +53,9 @@ private:
     /// Constructs the logger.
     explicit Logger(scs_log_t game_log_callback);
 
+    /// Instance of the logger, used by static methods.
+    static std::unique_ptr<Logger> instance;
+
 public:
     /// Call from the SCS API telemetry initialization hook to initialize the
     /// logging system.
@@ -40,6 +64,10 @@ public:
     /// Call from the SCS API telemetry shutdown hook to clean up the logging
     /// system.
     static void shutdown();
+
+    /// Call periodically from SCS telemetry API callbacks to flush the log
+    /// queue.
+    static void periodic();
 
     /// Send a verbose message (log file only) without formatting.
     static void verbose(const char *msg) {
@@ -66,28 +94,28 @@ public:
     }
 
     /// Send a verbose message (log file only) with formatting.
-    template<typename... Args>
+    template <typename... Args>
     static void verbose(const char *format, Args... args) {
         if (!instance) return;
         instance->logf(SCS_LOG_TYPE_verbose, format, args...);
     }
 
     /// Send an info message with formatting.
-    template<typename... Args>
+    template <typename... Args>
     static void info(const char *format, Args... args) {
         if (!instance) return;
         instance->logf(SCS_LOG_TYPE_message, format, args...);
     }
 
     /// Send a warning message with formatting.
-    template<typename... Args>
+    template <typename... Args>
     static void warn(const char *format, Args... args) {
         if (!instance) return;
         instance->logf(SCS_LOG_TYPE_warning, format, args...);
     }
 
     /// Send an error message with formatting.
-    template<typename... Args>
+    template <typename... Args>
     static void error(const char *format, Args... args) {
         if (!instance) return;
         instance->logf(SCS_LOG_TYPE_error, format, args...);
