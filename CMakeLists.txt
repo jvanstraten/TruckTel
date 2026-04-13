@@ -38,8 +38,8 @@ add_library(trucktel SHARED
         src/recorder/recorder.cpp
         src/server.h
         src/server.cpp)
-target_include_directories(trucktel PRIVATE ${SCS_SDK_INCLUDE} src)
 target_link_libraries(trucktel PRIVATE nlohmann_json::nlohmann_json)
+target_include_directories(trucktel PUBLIC ${SCS_SDK_INCLUDE} src)
 
 # On Windows, we explicitly need to specify functions that we want to export in
 # a DLL. A normal person would use __declspec(dllexport), but we can't easily
@@ -48,3 +48,7 @@ target_link_libraries(trucktel PRIVATE nlohmann_json::nlohmann_json)
 if(MSVC)
 target_link_options(trucktel PRIVATE /EXPORT:scs_telemetry_init /EXPORT:scs_telemetry_shutdown)
 endif()
+
+# Dummy executable for (very) basic testing.
+add_executable(dummy src/dummy/main.cpp)
+target_link_libraries(dummy PRIVATE trucktel)
