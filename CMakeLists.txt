@@ -8,16 +8,21 @@ set(SCS_SDK_VERSION 1_14)
 set(SCS_SDK_SHA256 c6c1f7376b7324994d9f9c567f3c4141fbbf305b6bf803bc4cfeef2437b2023a)
 set(JSON_VERSION v3.12.0)
 set(JSON_SHA256 42f6e95cad6ec532fd372391373363b62a14af6d771056dbfc86160e6dfff7aa)
+set(RESTINIO_VERSION v0.7.9.1)
 
 # Declare external content.
 include(FetchContent)
 FetchContent_Declare(scs_sdk URL https://download.eurotrucksimulator2.com/scs_sdk_${SCS_SDK_VERSION}.zip URL_HASH SHA256=${SCS_SDK_SHA256})
 FetchContent_Declare(json URL https://github.com/nlohmann/json/releases/download/${JSON_VERSION}/json.tar.xz URL_HASH SHA256=${JSON_SHA256})
+FetchContent_Declare(restinio GIT_REPOSITORY https://github.com/Stiffstream/restinio.git GIT_TAG ${RESTINIO_VERSION} GIT_SHALLOW TRUE)
 
 # Download external content.
 FetchContent_MakeAvailable(scs_sdk)
 set(SCS_SDK_INCLUDE "${scs_sdk_SOURCE_DIR}/include")
 FetchContent_MakeAvailable(json)
+FetchContent_MakeAvailable(restinio)
+set(RESTINIO_ASIO_SOURCE standalone)
+add_subdirectory("${restinio_SOURCE_DIR}/dev/restinio")
 
 # Build the plugin library. This is what ETS2/ATS should load. Place the .so
 # (or .dll, maybe? I didn't try Windows) in a directory named "plugins" created
