@@ -114,7 +114,7 @@ scs_result_t unregister_from_channel(
 
 /// Sends dummy channel data to all channels.
 void send_channel_data() {
-    for (auto &handler : channel_handlers | std::views::values) {
+    for (auto &[_, handler] : channel_handlers) {
         bool send = true;
         if (!handler.value_changed) {
             if (!(handler.flags & SCS_TELEMETRY_CHANNEL_FLAG_each_frame)) {

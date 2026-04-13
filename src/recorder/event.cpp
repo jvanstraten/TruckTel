@@ -14,7 +14,7 @@ void EventRecorder::push(nlohmann::json event) {
     }
 
     // Push the event.
-    events.emplace_back(id_counter, now, std::move(event));
+    events.emplace_back(Event{id_counter, now, std::move(event)});
 
     // Update the ID counter.
     id_counter++;

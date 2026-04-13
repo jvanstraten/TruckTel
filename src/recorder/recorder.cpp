@@ -148,7 +148,7 @@ void Recorder::register_trailer_handler(ChannelMetadata metadata) {
 
     // Support multiple trailers.
     metadata.funbit_name.clear();
-    if (!metadata.scs_name.starts_with("trailer.")) return;
+    if (metadata.scs_name.substr(0, 8) != "trailer.") return;
     const auto remainder = metadata.scs_name.substr(7); // including period
     for (uint32_t trailer_index = 0;
          trailer_index < SCS_TELEMETRY_trailers_count; trailer_index++) {
