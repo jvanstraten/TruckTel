@@ -6,7 +6,9 @@
 /// work with a naive implementation: non-leaf paths can have data in them.
 /// Whenever that happens, the data of a non-leaf node is put in a node with
 /// key "_".
-void json_assign_path(nlohmann::json &json, const std::string &path, const nlohmann::json &data) {
+void json_assign_path(
+    nlohmann::json &json, const std::string &path, const nlohmann::json &data
+) {
     size_t start = 0;
     auto json_ptr = &json;
     while (true) {

@@ -5,10 +5,18 @@
 ChannelRecorder::ChannelRecorder() {
     // Register "pseudochannels" for the information carried with the
     // start-frame event.
-    idx_render_time = register_channel({"frame.render_time", SCS_U32_NIL, SCS_VALUE_TYPE_u64, ""});
-    idx_simulation_time = register_channel({"frame.simulation_time", SCS_U32_NIL, SCS_VALUE_TYPE_u64, ""});
-    idx_paused_simulation_time = register_channel({"frame.paused_simulation_time", SCS_U32_NIL, SCS_VALUE_TYPE_u64, ""});
-    idx_paused = register_channel({"frame.paused", SCS_U32_NIL, SCS_VALUE_TYPE_bool, "game.paused"});
+    idx_render_time = register_channel(
+        {"frame.render_time", SCS_U32_NIL, SCS_VALUE_TYPE_u64, ""}
+    );
+    idx_simulation_time = register_channel(
+        {"frame.simulation_time", SCS_U32_NIL, SCS_VALUE_TYPE_u64, ""}
+    );
+    idx_paused_simulation_time = register_channel(
+        {"frame.paused_simulation_time", SCS_U32_NIL, SCS_VALUE_TYPE_u64, ""}
+    );
+    idx_paused = register_channel(
+        {"frame.paused", SCS_U32_NIL, SCS_VALUE_TYPE_bool, "game.paused"}
+    );
 }
 
 size_t ChannelRecorder::register_channel(ChannelMetadata metadata) {
@@ -59,7 +67,8 @@ void ChannelRecorder::end() {
     front = 1 - front;
 }
 
-[[nodiscard]] const std::vector<ChannelMetadata> &ChannelRecorder::channels() const {
+[[nodiscard]] const std::vector<ChannelMetadata> &ChannelRecorder::
+    channels() const {
     return channel_metadata;
 }
 
@@ -71,7 +80,8 @@ std::vector<scs_value_t> ChannelRecorder::poll() {
 nlohmann::json ChannelRecorder::poll_json_scs() {
     nlohmann::json json_data{};
     const auto raw_data = poll();
-    for (size_t i = 0; i < raw_data.size() && i < channel_metadata.size(); i++) {
+    for (size_t i = 0; i < raw_data.size() && i < channel_metadata.size();
+         i++) {
         if (raw_data[i].type == SCS_VALUE_TYPE_INVALID) continue;
         const auto value = scs_value_to_json(raw_data[i]);
         const auto &metadata = channel_metadata[i];
@@ -87,7 +97,8 @@ nlohmann::json ChannelRecorder::poll_json_scs() {
 nlohmann::json ChannelRecorder::poll_json_funbit() {
     nlohmann::json json_data{};
     const auto raw_data = poll();
-    for (size_t i = 0; i < raw_data.size() && i < channel_metadata.size(); i++) {
+    for (size_t i = 0; i < raw_data.size() && i < channel_metadata.size();
+         i++) {
         if (raw_data[i].type == SCS_VALUE_TYPE_INVALID) continue;
         const auto &metadata = channel_metadata[i];
         if (metadata.funbit_name.empty()) continue;

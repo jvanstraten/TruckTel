@@ -1,14 +1,14 @@
 #pragma once
 
 // Standard libraries.
+#include <mutex>
 #include <string>
 #include <vector>
-#include <mutex>
 
 // Dependencies.
-#include <scssdk_value.h>
-#include <scssdk_telemetry_event.h>
 #include <nlohmann/json.hpp>
+#include <scssdk_telemetry_event.h>
+#include <scssdk_value.h>
 
 /// Metadata for channels.
 struct ChannelMetadata {
@@ -99,5 +99,4 @@ public:
     /// server. This doesn't include static config data yet, and some post-
     /// conversions are necessary for compatibility.
     nlohmann::json poll_json_funbit();
-
 };

@@ -1,8 +1,8 @@
 #pragma once
 
 // Standard libraries.
-#include <cstdint>
 #include <chrono>
+#include <cstdint>
 #include <list>
 #include <mutex>
 

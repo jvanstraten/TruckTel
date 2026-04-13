@@ -1,0 +1,14 @@
+---
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: Copyright 2026 Lionite B.V.
+
+extends: default
+
+rules:
+  line-length: disable
+  indentation:
+    spaces: 2
+    indent-sequences: true
+    check-multi-line-strings: true
+  truthy:
+    check-keys: false

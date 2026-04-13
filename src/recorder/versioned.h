@@ -35,7 +35,7 @@ public:
     /// data has not changed since the previous call.
     nlohmann::json poll(uint64_t &version);
 
-    /// Polls for data without a version check. This always returns a copy of the
-    /// latest data.
+    /// Polls for data without a version check. This always returns a copy of
+    /// the latest data.
     nlohmann::json poll();
 };

@@ -1,7 +1,7 @@
 #include "event.h"
 
-EventRecorder::EventRecorder(const std::chrono::system_clock::duration max_age) : max_age(max_age) {
-}
+EventRecorder::EventRecorder(const std::chrono::system_clock::duration max_age)
+    : max_age(max_age) {}
 
 void EventRecorder::push(nlohmann::json event) {
     std::lock_guard guard(mutex);
