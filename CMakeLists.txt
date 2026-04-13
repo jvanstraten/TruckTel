@@ -22,6 +22,14 @@ FetchContent_MakeAvailable(json)
 # Build the plugin library. This is what ETS2/ATS should load. Place the .so
 # (or .dll, maybe? I didn't try Windows) in a directory named "plugins" created
 # within the directory that contains the game binary.
-add_library(trucktel SHARED main.cpp)
+add_library(trucktel SHARED trucktel.cpp)
 target_include_directories(trucktel PRIVATE ${SCS_SDK_INCLUDE})
 target_link_libraries(trucktel PRIVATE nlohmann_json::nlohmann_json)
+
+# On Windows, we explicitly need to specify functions that we want to export in
+# a DLL. A normal person would use __declspec(dllexport), but we can't easily
+# change the function linkage within C++ because it's defined by the SCS header
+# files.
+if(MSVC)
+target_link_options(trucktel PRIVATE /EXPORT:scs_telemetry_init /EXPORT:scs_telemetry_shutdown)
+endif()

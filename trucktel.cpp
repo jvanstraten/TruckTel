@@ -30,7 +30,7 @@ private:
     const scs_log_t game_log_callback;
 
     /// File pointer to a file that also stores all the log messages.
-    std::ofstream log_file;
+    std::ofstream log_file{};
 
     /// Buffer used for formatting log messages.
     char *buf = nullptr;
@@ -42,9 +42,18 @@ private:
 public:
     /// Constructs the logger.
     explicit Logger(const scs_log_t game_log_callback) : game_log_callback(game_log_callback) {
+        // The working directory for ETS2 seems to be the directory its
+        // executable is placed in, so the path below points to a file
+        // in the plugin directory.
         const auto log_path = std::filesystem::current_path() / "plugins" / "trucktel.txt";
-        logf(SCS_LOG_TYPE_message, "TruckTel is logging to %s", log_path.c_str());
-        log_file.open(log_path.c_str(), std::ios_base::in | std::ios_base::out);
+
+        // For some ungodly reason, std::filesystem::path::c_str() emits UTF16
+        // on Windows. Avoid by converting to std::string first.
+        const auto log_path_str = log_path.string();
+
+        // Report where we're logging to for good measure.
+        logf(SCS_LOG_TYPE_message, "TruckTel is logging to %s", log_path_str.c_str());
+        log_file.open(log_path_str.c_str());
     }
 
     /// Destroys the logger.
@@ -57,7 +66,7 @@ public:
         if (game_log_callback) {
             game_log_callback(severity, message);
         }
-        if (log_file) {
+        if (log_file.is_open() && log_file.good()) {
             switch (severity) {
                 case SCS_LOG_TYPE_verbose: log_file << "VERB: "; break;
                 case SCS_LOG_TYPE_message: log_file << "INFO: "; break;
