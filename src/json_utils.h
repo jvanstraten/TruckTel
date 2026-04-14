@@ -20,5 +20,26 @@ nlohmann::json scs_version_to_json(scs_u32_t version);
 /// Converts an scs_value_t variant into an equivalent JSON form.
 nlohmann::json scs_value_to_json(const scs_value_t &value);
 
-/// Converts an array of named attributes to a JSON structure.
-nlohmann::json scs_attributes_to_json(const scs_named_value_t *attributes);
+/// Owned mirror of scs_named_value_t.
+struct NamedValue {
+    /// Owned attribute name.
+    std::string name;
+
+    /// Index for array values, or SCS_U32_NIL for scalars.
+    scs_u32_t index;
+
+    /// JSON representation of the scs_value_t value.
+    nlohmann::json value;
+
+    /// Returns a special NamedValue that represents the ID of an event.
+    static NamedValue scalar(std::string name, nlohmann::json value);
+
+    /// Returns a special NamedValue that represents the ID of an event.
+    static NamedValue event_id(const std::string &event_id);
+};
+
+/// Converts an array of named values received from the SCS telemetry API to
+/// an owned copy.
+std::vector<NamedValue> copy_scs_attributes(
+    const scs_named_value_t *attributes
+);

@@ -1,11 +1,5 @@
 #include "json_utils.h"
 
-/// Assigns data to the hierarchical key identified by path in json. The
-/// path separator is a period. This tries to be smarter than it really
-/// should be, because the paths used by the SCS API are not uniform enough to
-/// work with a naive implementation: non-leaf paths can have data in them.
-/// Whenever that happens, the data of a non-leaf node is put in a node with
-/// key "_".
 void json_assign_path(
     nlohmann::json &json, const std::string &path, const nlohmann::json &data
 ) {
@@ -45,12 +39,10 @@ void json_assign_path(
     }
 }
 
-/// Converts an SCS version number to a JSON array.
 nlohmann::json scs_version_to_json(const scs_u32_t version) {
     return {SCS_GET_MAJOR_VERSION(version), SCS_GET_MINOR_VERSION(version)};
 }
 
-/// Converts an scs_value_t variant into an equivalent JSON form.
 nlohmann::json scs_value_to_json(const scs_value_t &value) {
     switch (value.type) {
         case SCS_VALUE_TYPE_bool:
@@ -110,18 +102,29 @@ nlohmann::json scs_value_to_json(const scs_value_t &value) {
     }
 }
 
-/// Converts an array of named attributes to a JSON structure.
-nlohmann::json scs_attributes_to_json(const scs_named_value_t *attributes) {
+NamedValue NamedValue::scalar(std::string name, nlohmann::json value) {
+    return NamedValue{
+        .name = std::move(name), .index = SCS_U32_NIL, .value = std::move(value)
+    };
+}
+
+NamedValue NamedValue::event_id(const std::string &event_id) {
+    return NamedValue{.name = "_", .index = SCS_U32_NIL, .value = event_id};
+}
+
+std::vector<NamedValue> copy_scs_attributes(
+    const scs_named_value_t *attributes
+) {
     if (!attributes) return {};
-    nlohmann::json json{};
+    std::vector<NamedValue> result;
     while (attributes->name) {
-        const auto value = scs_value_to_json(attributes->value);
-        auto key = std::string(attributes->name);
-        if (attributes->index != SCS_U32_NIL) {
-            key += "." + std::to_string(attributes->index);
-        }
-        json_assign_path(json, key, value);
+        result.emplace_back(
+            NamedValue{
+                attributes->name, attributes->index,
+                scs_value_to_json(attributes->value)
+            }
+        );
         ++attributes;
     }
-    return json;
+    return result;
 }

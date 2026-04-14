@@ -30,7 +30,8 @@ class HttpHandler {
 private:
     /// Exception class used to return 404 errors.
     struct FileNotFound : std::runtime_error {
-        FileNotFound(const std::string &path) : std::runtime_error(path) {}
+        explicit FileNotFound(const std::string &path)
+            : std::runtime_error(path) {}
     };
 
     /// Document root for serving static files.

@@ -7,6 +7,8 @@
 
 #include <nlohmann/json.hpp>
 
+#include "json_utils.h"
+
 /// Recorder for a stream of events that should be delivered to clients
 /// completely but without duplicates.
 class EventRecorder {
@@ -19,8 +21,8 @@ private:
         /// Timestamp that this event was generated.
         std::chrono::system_clock::time_point timestamp;
 
-        /// JSON-based data identifying the event.
-        nlohmann::json data;
+        /// Event attributes.
+        std::vector<NamedValue> data;
     };
 
     /// Event queue. Newer events are inserted at the end of the queue, and old
@@ -44,7 +46,7 @@ public:
 
     /// Pushes an event into the queue. This first prunes old events to avoid
     /// the memory footprint from growing without bound.
-    void push(nlohmann::json event);
+    void push(std::vector<NamedValue> event);
 
     /// Initializes the next_id value for poll() when a client first connects.
     uint64_t poll_init();
@@ -53,7 +55,6 @@ public:
     /// next_id variable; it is used to avoid sending duplicates. next_id will
     /// be incremented by the number of events returned by the function if and
     /// only if no events were dropped; it will be incremented by N more than
-    /// the number of events returned if N events were dropped. The result is a
-    /// JSON array of events.
-    nlohmann::json poll(uint64_t &next_id);
+    /// the number of events returned if N events were dropped.
+    std::vector<std::vector<NamedValue>> poll(uint64_t &next_id);
 };

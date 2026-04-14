@@ -1,20 +1,25 @@
 #include "server.h"
 
+void Server::update_database() {
+    database.update();
+    last_update = std::chrono::system_clock::now();
+}
+
 void Server::set_timer() {
-    timer = endpoint.set_timer(1000, [this](wspp::lib::error_code const &ec) {
-        on_timer(ec);
-    });
+    timer = endpoint.set_timer(
+        MIN_UPDATE_PERIOD_MILLIS,
+        [this](wspp::lib::error_code const &ec) { on_timer(ec); }
+    );
 }
 
 void Server::on_timer(wspp::lib::error_code const &ec) {
     if (ec) return;
 
-    // TODO: update websocket connections if we haven't recently received a
-    //  frame from the game.
-    std::stringstream val;
-    val << "count is " << count++;
-    for (auto it = connections.begin(); it != connections.end(); ++it) {
-        endpoint.send(*it, val.str(), wspp::frame::opcode::text);
+    // Update websocket connections if we haven't recently received a frame from
+    // the game.
+    if (std::chrono::system_clock::now() - last_update >
+        std::chrono::milliseconds(MIN_UPDATE_PERIOD_MILLIS)) {
+        update_database();
     }
 
     // Reset the timer.
@@ -106,4 +111,8 @@ void Server::run(
 
 void Server::shutdown() {
     asio::post(endpoint.get_io_service(), [this]() { on_shutdown(); });
+}
+
+void Server::update() {
+    asio::post(endpoint.get_io_service(), [this]() { update_database(); });
 }

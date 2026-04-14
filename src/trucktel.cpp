@@ -34,7 +34,8 @@ SCSAPI_RESULT scs_telemetry_init(
         // The working directory for ETS2 seems to be the directory its
         // executable is placed in, so the path below should point to the
         // plugin directory.
-        const auto plugin_path = std::filesystem::current_path() / "plugins";
+        const auto cwd = std::filesystem::current_path();
+        const auto plugin_path = cwd / "plugins";
 
         // Make sure that this directory actually exists, to get some confidence
         // that we're looking in the right place.
@@ -43,6 +44,10 @@ SCSAPI_RESULT scs_telemetry_init(
             Logger::error("Expected it to be %s", plugin_path.string().c_str());
             return SCS_RESULT_generic_error;
         }
+
+        // If that's where the plugin directory is, then the installation
+        // directory for the game is two levels up.
+        const auto game_install_path = cwd.parent_path().parent_path();
 
         // We'll try to pollute the plugins directory only minimally by putting
         // everything other than the plugin itself into our own directory. This
@@ -61,7 +66,7 @@ SCSAPI_RESULT scs_telemetry_init(
         // TODO: load configuration file.
 
         // Initialize the data recording logic.
-        Recorder::init(version, init_params);
+        Recorder::init(version, init_params, game_install_path);
 
         // Initialize the HTTP server logic.
         ServerThread::init(trucktel_path / "www");

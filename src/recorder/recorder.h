@@ -1,35 +1,38 @@
 #pragma once
 
+#include <functional>
 #include <memory>
 
 #include <scssdk_telemetry.h>
 
 #include "channel.h"
+#include "configuration.h"
 #include "event.h"
-#include "versioned.h"
 
 /// Singleton class that records data received from the SCS API via events and
 /// channels and provides asynchronous and thread-safe access to this data.
 class Recorder {
 private:
     /// Maximum number of wheels for a truck or trailer queried.
+    ///  TODO: remove when the channels are made configurable.
     static constexpr uint32_t MAX_WHEELS = 14;
 
     /// Initialization parameters passed to the plugin initialization function
     /// by the game.
     const scs_telemetry_init_params_v101_t *const init_params;
 
-    /// Basic game and API information.
-    VersionedRecorder game;
-
     /// Game configuration data as received via the configuration event.
-    VersionedRecorder config;
+    ConfigurationRecorder configuration;
 
     /// Gameplay event recorder. This also records paused/started events.
     EventRecorder gameplay;
 
     /// Frame data from channels.
-    ChannelRecorder frame;
+    ChannelRecorder channels;
+
+    /// Function to call whenever data changes to instruct the server to poll
+    /// from us.
+    std::function<void()> update_server;
 
     /// Current recorder instance used by the static callbacks from the SCS
     /// API.
@@ -73,17 +76,51 @@ private:
 
     /// Constructor.
     Recorder(
-        scs_u32_t version, const scs_telemetry_init_params_v101_t *init_params
+        scs_u32_t version,
+        const scs_telemetry_init_params_v101_t *init_params,
+        const std::string &game_dir
     );
 
 public:
     /// Call from the SCS API telemetry initialization hook to initialize the
     /// recorder.
     static void init(
-        scs_u32_t version, const scs_telemetry_init_params_v101_t *init_params
+        scs_u32_t version,
+        const scs_telemetry_init_params_v101_t *init_params,
+        const std::string &game_dir
     );
 
     /// Call from the SCS API telemetry shutdown hook to clean up recorder
     /// memory.
     static void shutdown();
+
+    /// Sets a callback to be called when data has recently changed.
+    static void set_update_server_callback(
+        const std::function<void()> &callback
+    );
+
+    /// Returns const access to the channel metadata structure. Thread-safe-ish
+    /// (relies on the vector not changing while the plugin is multithreaded).
+    [[nodiscard]] static const std::vector<ChannelMetadata> &channel_metadata();
+
+    /// Update the given vector with the latest channel data. Thread-safe.
+    static void channel_poll(std::vector<scs_value_t> &data);
+
+    /// Update the given JSON structure with the latest configuration data, if
+    /// the version has changed since the previous call. Thread-safe.
+    static bool configuration_poll(
+        std::map<std::string, std::vector<NamedValue>> &data, uint64_t &version
+    );
+
+    /// Initializes the next_id value for poll() when a client first connects.
+    /// Thread-safe.
+    static uint64_t event_poll_init();
+
+    /// Polls for events. The client doing the polling should keep track of the
+    /// next_id variable; it is used to avoid sending duplicates. next_id will
+    /// be incremented by the number of events returned by the function if and
+    /// only if no events were dropped; it will be incremented by N more than
+    /// the number of events returned if N events were dropped. The result is a
+    /// JSON array of events. Thread-safe.
+    static std::vector<std::vector<NamedValue>> event_poll(uint64_t &next_id);
 };

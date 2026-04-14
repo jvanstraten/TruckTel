@@ -1,6 +1,7 @@
 #include "server_thread.h"
 
 #include "logger.h"
+#include "recorder/recorder.h"
 #include "server.h"
 
 void ServerThread::main(std::string server_root) const {
@@ -29,6 +30,9 @@ void ServerThread::init(const std::string &server_root) {
     Logger::info("Note: log messages from the server thread may not");
     Logger::info("show up in the game log immediately while in the");
     Logger::info("main menu. Track the plugin log file if necessary!");
+    Recorder::set_update_server_callback([]() {
+        if (instance) instance->server->update();
+    });
 }
 
 void ServerThread::shutdown() {

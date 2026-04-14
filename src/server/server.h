@@ -1,12 +1,11 @@
 #pragma once
 
+#include <chrono>
 #include <filesystem>
 #include <set>
 
-#include <nlohmann/json.hpp>
-
+#include "database.h"
 #include "http.h"
-#include "url.h"
 #include "wspp_config.h"
 
 /// WebsocketPP server, initially derived from the telemetry_server example
@@ -18,11 +17,25 @@ private:
         connections;
     wspp::Server::timer_ptr timer;
 
+    /// "Database" that stores the most recent state of all configuration and
+    /// channel data from the game synchronized to the Asio thread.
+    Database database;
+
+    /// Amount of milliseconds of silence from the game after which the server
+    /// thread will poll on its own.
+    static constexpr int MIN_UPDATE_PERIOD_MILLIS = 1000;
+
+    /// The last time that the database was updated.
+    std::chrono::system_clock::time_point last_update;
+
     /// Document root for serving static files.
     HttpHandler http_handler;
 
     // Telemetry data
     uint64_t count = 0;
+
+    /// Poll from the game thread data storage.
+    void update_database();
 
     /// Restarts the timer for periodic calls.
     void set_timer();
@@ -52,4 +65,8 @@ public:
     /// Call from any thread to tell the server to stop accepting connections
     /// and close all open connections.
     void shutdown();
+
+    /// Hint from the game thread that new data is available and the server
+    /// thread should poll again soon.
+    void update();
 };

@@ -3,7 +3,7 @@
 EventRecorder::EventRecorder(const std::chrono::system_clock::duration max_age)
     : max_age(max_age) {}
 
-void EventRecorder::push(nlohmann::json event) {
+void EventRecorder::push(std::vector<NamedValue> event) {
     std::lock_guard guard(mutex);
 
     // Perform pruning.
@@ -25,7 +25,7 @@ uint64_t EventRecorder::poll_init() {
     return id_counter;
 }
 
-nlohmann::json EventRecorder::poll(uint64_t &next_id) {
+std::vector<std::vector<NamedValue>> EventRecorder::poll(uint64_t &next_id) {
     std::lock_guard guard(mutex);
 
     // Starting from the newest event, rewind the list until we find the
@@ -38,7 +38,7 @@ nlohmann::json EventRecorder::poll(uint64_t &next_id) {
     }
 
     // Copy all the events that are new for this client into a JSON array.
-    nlohmann::json result = nlohmann::json::array();
+    std::vector<std::vector<NamedValue>> result;
     for (; it != events.cend(); ++it) {
         result.emplace_back(it->data);
     }

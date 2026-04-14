@@ -47,8 +47,8 @@ add_library(trucktel SHARED
         src/json_utils.cpp
         src/recorder/event.cpp
         src/recorder/event.h
-        src/recorder/versioned.h
-        src/recorder/versioned.cpp
+        src/recorder/configuration.h
+        src/recorder/configuration.cpp
         src/recorder/channel.h
         src/recorder/channel.cpp
         src/recorder/recorder.h
@@ -62,6 +62,8 @@ add_library(trucktel SHARED
         src/server/url.cpp
         src/server/http.h
         src/server/http.cpp
+        src/server/database.h
+        src/server/database.cpp
         ${asio_SOURCE_DIR}/asio/src/asio.cpp
 )
 target_link_libraries(trucktel
