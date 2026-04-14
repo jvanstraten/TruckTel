@@ -1,15 +1,9 @@
 #include "server.h"
 
-#include <asio.hpp>
-#include <websocketpp/config/asio_no_tls.hpp>
-#include <websocketpp/server.hpp>
-
+#include "config.h"
 #include "logger.h"
 
-using WebsocketServer = websocketpp::server<websocketpp::config::asio>;
-
 // TODO:
-//  - implement a logging policy that connects to Logger
 //  - add http handler for testing
 //  - make sure this doesn't catch fire on windows
 //  - implement basically everything from the telemetry_server example
@@ -18,9 +12,7 @@ using WebsocketServer = websocketpp::server<websocketpp::config::asio>;
 
 // Define a callback to handle incoming messages
 void on_message(
-    WebsocketServer *s,
-    websocketpp::connection_hdl hdl,
-    WebsocketServer::message_ptr msg
+    wspp::Server *s, wspp::connection_hdl hdl, wspp::Server::message_ptr msg
 ) {
     std::cout << "on_message called with hdl: " << hdl.lock().get()
               << " and message: " << msg->get_payload() << std::endl;
@@ -34,7 +26,7 @@ void on_message(
 
     try {
         s->send(hdl, msg->get_payload(), msg->get_opcode());
-    } catch (websocketpp::exception const &e) {
+    } catch (wspp::exception const &e) {
         std::cout << "Echo failed because: "
                   << "(" << e.what() << ")" << std::endl;
     }
@@ -48,20 +40,20 @@ void Server::main() {
     }*/
 
     // Create a server endpoint
-    WebsocketServer echo_server;
+    wspp::Server echo_server;
 
     try {
         // Set logging settings
-        echo_server.set_access_channels(websocketpp::log::alevel::all);
-        // echo_server.clear_access_channels(websocketpp::log::alevel::frame_payload);
+        echo_server.set_access_channels(wspp::alevel::all);
+        // echo_server.clear_access_channels(wspp::alevel::frame_payload);
 
         // Initialize Asio
         echo_server.init_asio();
 
         // Register our message handler
-        using websocketpp::lib::bind;
-        using websocketpp::lib::placeholders::_1;
-        using websocketpp::lib::placeholders::_2;
+        using wspp::lib::bind;
+        using wspp::lib::placeholders::_1;
+        using wspp::lib::placeholders::_2;
         echo_server.set_message_handler(
             bind(&on_message, &echo_server, _1, _2)
         );
@@ -76,9 +68,9 @@ void Server::main() {
         while (!shutdown_requested.load()) {
             echo_server.poll();
         }
-        echo_server.stop();
+        echo_server.stop_listening();
         echo_server.run();
-    } catch (websocketpp::exception const &e) {
+    } catch (wspp::exception const &e) {
         std::cout << e.what() << std::endl;
     } catch (...) {
         std::cout << "other exception" << std::endl;

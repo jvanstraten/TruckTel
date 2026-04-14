@@ -14,7 +14,9 @@ void Logger::flush_queue_unlocked() {
     }
 }
 
-void Logger::log(const scs_log_type_t severity, const std::string &message) {
+void Logger::log_raw(
+    const scs_log_type_t severity, const std::string &message
+) {
     std::lock_guard guard(mutex);
 
     if (game_log_callback) {
@@ -48,7 +50,9 @@ void Logger::log(const scs_log_type_t severity, const std::string &message) {
     }
 }
 
-void Logger::logf(const scs_log_type_t severity, const char *format, ...) {
+void Logger::log_formatted(
+    const scs_log_type_t severity, const char *format, ...
+) {
     va_list args1;
     va_start(args1, format);
     va_list args2;
@@ -62,7 +66,7 @@ void Logger::logf(const scs_log_type_t severity, const char *format, ...) {
     }
     vsnprintf(buf, size, format, args2);
     va_end(args2);
-    log(severity, buf);
+    log_raw(severity, buf);
     free(buf);
 }
 
@@ -80,7 +84,7 @@ Logger::Logger(const scs_log_t game_log_callback)
     const auto log_path_str = log_path.string();
 
     // Report where we're logging to for good measure.
-    logf(SCS_LOG_TYPE_message, "Logging to %s", log_path_str.c_str());
+    log_formatted(SCS_LOG_TYPE_message, "Logging to %s", log_path_str.c_str());
     log_file.open(log_path_str.c_str());
 }
 

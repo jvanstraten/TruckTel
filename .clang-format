@@ -165,13 +165,17 @@ IncludeCategories:
     Priority: 3
     SortPriority: 4
     CaseSensitive: false
-  - Regex: <
+  - Regex: <(asio|websocketpp)
     Priority: 4
+    SortPriority: 5
+    CaseSensitive: false
+  - Regex: <
+    Priority: 5
     SortPriority: 2
     CaseSensitive: false
   - Regex: '"'
-    Priority: 5
-    SortPriority: 5
+    Priority: 6
+    SortPriority: 6
     CaseSensitive: false
 IncludeIsMainRegex: (Test)?$
 IncludeIsMainSourceRegex: ''

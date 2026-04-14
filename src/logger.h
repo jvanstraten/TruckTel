@@ -43,10 +43,10 @@ private:
     std::mutex mutex;
 
     /// Logs a message without formatting.
-    void log(scs_log_type_t severity, const std::string &message);
+    void log_raw(scs_log_type_t severity, const std::string &message);
 
     /// Logs a message with printf-style formatting.
-    void logf(scs_log_type_t severity, const char *format, ...);
+    void log_formatted(scs_log_type_t severity, const char *format, ...);
 
     /// Constructs the logger.
     explicit Logger(scs_log_t game_log_callback);
@@ -67,55 +67,70 @@ public:
     /// queue.
     static void periodic();
 
-    /// Send a verbose message (log file only) without formatting.
-    static void verbose(const char *msg) {
+    /// Send a message with customizable severity.
+    static void log(const scs_log_type_t verbosity, const char *message) {
         if (!instance) return;
-        instance->log(SCS_LOG_TYPE_verbose, msg);
+        instance->log_raw(verbosity, message);
+    }
+
+    /// Send a verbose message (log file only) without formatting.
+    static void verbose(const char *message) {
+        if (!instance) return;
+        instance->log_raw(SCS_LOG_TYPE_verbose, message);
     }
 
     /// Send an info message without formatting.
-    static void info(const char *msg) {
+    static void info(const char *message) {
         if (!instance) return;
-        instance->log(SCS_LOG_TYPE_message, msg);
+        instance->log_raw(SCS_LOG_TYPE_message, message);
     }
 
     /// Send a warning message without formatting.
-    static void warn(const char *msg) {
+    static void warn(const char *message) {
         if (!instance) return;
-        instance->log(SCS_LOG_TYPE_warning, msg);
+        instance->log_raw(SCS_LOG_TYPE_warning, message);
     }
 
     /// Send an error message without formatting.
-    static void error(const char *msg) {
+    static void error(const char *message) {
         if (!instance) return;
-        instance->log(SCS_LOG_TYPE_error, msg);
+        instance->log_raw(SCS_LOG_TYPE_error, message);
+    }
+
+    /// Send a message with formatting and customizable severity.
+    template <typename... Args>
+    static void log(
+        const scs_log_type_t verbosity, const char *format, Args... args
+    ) {
+        if (!instance) return;
+        instance->log_formatted(verbosity, format, args...);
     }
 
     /// Send a verbose message (log file only) with formatting.
     template <typename... Args>
     static void verbose(const char *format, Args... args) {
         if (!instance) return;
-        instance->logf(SCS_LOG_TYPE_verbose, format, args...);
+        instance->log_formatted(SCS_LOG_TYPE_verbose, format, args...);
     }
 
     /// Send an info message with formatting.
     template <typename... Args>
     static void info(const char *format, Args... args) {
         if (!instance) return;
-        instance->logf(SCS_LOG_TYPE_message, format, args...);
+        instance->log_formatted(SCS_LOG_TYPE_message, format, args...);
     }
 
     /// Send a warning message with formatting.
     template <typename... Args>
     static void warn(const char *format, Args... args) {
         if (!instance) return;
-        instance->logf(SCS_LOG_TYPE_warning, format, args...);
+        instance->log_formatted(SCS_LOG_TYPE_warning, format, args...);
     }
 
     /// Send an error message with formatting.
     template <typename... Args>
     static void error(const char *format, Args... args) {
         if (!instance) return;
-        instance->logf(SCS_LOG_TYPE_error, format, args...);
+        instance->log_formatted(SCS_LOG_TYPE_error, format, args...);
     }
 };

@@ -14,7 +14,7 @@
 
 #include "logger.h"
 #include "recorder/recorder.h"
-#include "server.h"
+#include "server/server.h"
 
 /// SCS API initialization callback. This is the entry point that ETS2/ATS
 /// calls.

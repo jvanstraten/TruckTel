@@ -49,8 +49,9 @@ add_library(trucktel SHARED
         src/recorder/channel.cpp
         src/recorder/recorder.h
         src/recorder/recorder.cpp
-        src/server.h
-        src/server.cpp
+        src/server/server.h
+        src/server/server.cpp
+        src/server/config.h
         ${asio_SOURCE_DIR}/asio/src/asio.cpp
 )
 target_link_libraries(trucktel PRIVATE nlohmann_json::nlohmann_json)
@@ -66,5 +67,6 @@ target_link_options(trucktel PRIVATE /EXPORT:scs_telemetry_init /EXPORT:scs_tele
 endif()
 
 # Dummy executable for (very) basic testing.
-add_executable(dummy src/dummy/main.cpp)
+add_executable(dummy src/dummy/main.cpp
+        src/server/config.h)
 target_link_libraries(dummy PRIVATE trucktel)
