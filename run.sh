@@ -3,7 +3,7 @@
 GAME="/data/installs/steam/steamapps/common/Euro Truck Simulator 2/bin/linux_x64/eurotrucks2"
 BUILD="build"
 LIB="libtrucktel.so"
-LOG="trucktel.txt"
+LOG="trucktel/log.txt"
 
 PLUGINDIR="$(dirname "$GAME")/plugins"
 

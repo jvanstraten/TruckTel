@@ -1,101 +1,109 @@
 #include "server.h"
 
-#include "logger.h"
-#include "wspp_config.h"
-
-// TODO:
-//  - add http handler for testing
-//  - make sure this doesn't catch fire on windows
-//  - implement basically everything from the telemetry_server example
-//  - find a way to terminate the event loop gracefully
-//  - ???
-
-// Define a callback to handle incoming messages
-void on_message(
-    wspp::Server *s, wspp::connection_hdl hdl, wspp::Server::message_ptr msg
-) {
-    std::cout << "on_message called with hdl: " << hdl.lock().get()
-              << " and message: " << msg->get_payload() << std::endl;
-
-    // check for a special command to instruct the server to stop listening so
-    // it can be cleanly exited.
-    if (msg->get_payload() == "stop-listening") {
-        s->stop_listening();
-        return;
-    }
-
-    try {
-        s->send(hdl, msg->get_payload(), msg->get_opcode());
-    } catch (wspp::exception const &e) {
-        std::cout << "Echo failed because: "
-                  << "(" << e.what() << ")" << std::endl;
-    }
+void Server::set_timer() {
+    timer = endpoint.set_timer(1000, [this](wspp::lib::error_code const &ec) {
+        on_timer(ec);
+    });
 }
 
-void Server::main() {
-    /*int i = 0;
-    while (!shutdown_requested.load()) {
-        Logger::info("hello from thread x%d!", ++i);
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-    }*/
+void Server::on_timer(wspp::lib::error_code const &ec) {
+    if (ec) return;
 
-    // Create a server endpoint
-    wspp::Server echo_server;
+    // TODO: update websocket connections if we haven't recently received a
+    //  frame from the game.
+    std::stringstream val;
+    val << "count is " << count++;
+    for (auto it = connections.begin(); it != connections.end(); ++it) {
+        endpoint.send(*it, val.str(), wspp::frame::opcode::text);
+    }
 
-    try {
-        // Set logging settings
-        echo_server.set_access_channels(wspp::alevel::all);
-        // echo_server.clear_access_channels(wspp::alevel::frame_payload);
+    // Reset the timer.
+    set_timer();
+}
 
-        // Initialize Asio
-        echo_server.init_asio();
+void Server::on_http(const wspp::connection_hdl &hdl) {
+    // Upgrade our connection handle to a full connection_ptr.
+    const wspp::Server::connection_ptr con = endpoint.get_con_from_hdl(hdl);
 
-        // Register our message handler
-        using wspp::lib::bind;
-        using wspp::lib::placeholders::_1;
-        using wspp::lib::placeholders::_2;
-        echo_server.set_message_handler(
-            bind(&on_message, &echo_server, _1, _2)
+    // Get the response for the requested resource.
+    const auto response = http_handler.handle_http(con->get_resource());
+
+    // Return the response to WebsocketPP.
+    con->set_body(response.body);
+    con->append_header("content-type", response.content_type);
+    con->set_status(response.code);
+}
+
+void Server::on_open(const wspp::connection_hdl &hdl) {
+    // TODO
+    connections.insert(hdl);
+}
+
+void Server::on_close(const wspp::connection_hdl &hdl) {
+    // TODO
+    connections.erase(hdl);
+}
+
+void Server::on_shutdown() {
+    endpoint.stop_listening();
+    Logger::info("on_shutdown");
+    for (const auto &hdl : connections) {
+        Logger::info("Closing a connection...");
+        endpoint.close(
+            hdl, wspp::close::status::going_away, "TruckTel plugin unload"
         );
-
-        // Listen on port 9002
-        echo_server.listen(8080);
-
-        // Start the server accept loop
-        echo_server.start_accept();
-
-        // Start the ASIO io_service run loop
-        while (!shutdown_requested.load()) {
-            echo_server.poll();
-        }
-        echo_server.stop_listening();
-        echo_server.run();
-    } catch (wspp::exception const &e) {
-        std::cout << e.what() << std::endl;
-    } catch (...) {
-        std::cout << "other exception" << std::endl;
+    }
+    if (timer) {
+        timer->cancel();
     }
 }
 
-Server::Server() : thread(&Server::main, this) {}
+void Server::run(
+    const std::filesystem::path &document_root, const uint16_t port
+) {
+    // Store the document root for serving static files.
+    http_handler.set_document_root(document_root);
 
-Server::~Server() {
-    shutdown_requested.store(true);
-    thread.join();
-}
+    // Set up masks for logging.
+    // TODO: make configurable
+    endpoint.clear_access_channels(wspp::alevel::all);
+    endpoint.set_access_channels(wspp::alevel::access_core);
+    endpoint.set_access_channels(wspp::alevel::app);
 
-std::unique_ptr<Server> Server::instance;
+    // Initialize the Asio transport policy.
+    endpoint.init_asio();
 
-void Server::init() {
-    if (instance)
-        throw std::runtime_error("can only have one telemetry server at once");
-    instance.reset(new Server());
-    Logger::info("Note: log messages from the server thread may not");
-    Logger::info("show up in the game log immediately while in the");
-    Logger::info("main menu. Track the plugin log file if necessary!");
+    // Bind the handlers we are using.
+    endpoint.set_open_handler([this](const wspp::connection_hdl &hdl) {
+        on_open(hdl);
+    });
+    endpoint.set_close_handler([this](const wspp::connection_hdl &hdl) {
+        on_close(hdl);
+    });
+    endpoint.set_http_handler([this](const wspp::connection_hdl &hdl) {
+        on_http(hdl);
+    });
+
+    // Enable SO_REUSE_ADDRESS so the user restarting the game quickly doesn't
+    // cause the plugin to stop working. This is technically a security risk,
+    // see e.g.
+    // https://github.com/zaphoyd/websocketpp/issues/803#issuecomment-912953104.
+    // However, if the user is expecting a webserver in a game mod plugin to be
+    // a properly secured thing, they have bigger problems.
+    endpoint.set_reuse_addr(true);
+
+    // Start listening.
+    // TODO: make configurable
+    endpoint.listen(port);
+    endpoint.start_accept();
+
+    // Set the initial timer to start telemetry
+    set_timer();
+
+    // Start the ASIO io_service run loop
+    endpoint.run();
 }
 
 void Server::shutdown() {
-    if (!instance) return;
-    instance.reset();
+    asio::post(endpoint.get_io_service(), [this]() { on_shutdown(); });
 }

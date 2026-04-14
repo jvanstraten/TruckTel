@@ -56,8 +56,12 @@ private:
 
 public:
     /// Call from the SCS API telemetry initialization hook to initialize the
-    /// logging system.
+    /// logging system. This doesn't yet open the log file.
     static void init(scs_log_t game_log_callback);
+
+    /// Opens the log file for at the given path. This must be called soon after
+    /// init(), in the same thread, before any other threading happens.
+    static void set_file(const std::string &path);
 
     /// Call from the SCS API telemetry shutdown hook to clean up the logging
     /// system.

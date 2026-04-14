@@ -53,9 +53,15 @@ add_library(trucktel SHARED
         src/recorder/channel.cpp
         src/recorder/recorder.h
         src/recorder/recorder.cpp
+        src/server/server_thread.h
+        src/server/server_thread.cpp
+        src/server/wspp_config.h
         src/server/server.h
         src/server/server.cpp
-        src/server/wspp_config.h
+        src/server/url.h
+        src/server/url.cpp
+        src/server/http.h
+        src/server/http.cpp
         ${asio_SOURCE_DIR}/asio/src/asio.cpp
 )
 target_link_libraries(trucktel

@@ -1,38 +1,55 @@
 #pragma once
 
-#include <atomic>
-#include <memory>
-#include <thread>
+#include <filesystem>
+#include <set>
 
-/// Class managing a worker thread to run the telemetry server in.
+#include <nlohmann/json.hpp>
+
+#include "http.h"
+#include "url.h"
+#include "wspp_config.h"
+
+/// WebsocketPP server, initially derived from the telemetry_server example
+/// class.
 class Server {
-
-    /// Main function for the thread.
-    void main();
-
-    /// Shutdown flag for the thread.
-    std::atomic<bool> shutdown_requested = false;
-
-    /// Thread handle.
-    std::thread thread;
-
-    /// Constructor. Starts the server thread.
-    Server();
-
-public:
-    /// Destructor. Shuts down and joins with the server thread.
-    ~Server();
-
 private:
-    /// Instance of the logger, used by static methods.
-    static std::unique_ptr<Server> instance;
+    wspp::Server endpoint;
+    std::set<wspp::connection_hdl, std::owner_less<wspp::connection_hdl>>
+        connections;
+    wspp::Server::timer_ptr timer;
+
+    /// Document root for serving static files.
+    HttpHandler http_handler;
+
+    // Telemetry data
+    uint64_t count = 0;
+
+    /// Restarts the timer for periodic calls.
+    void set_timer();
+
+    /// Called periodically in Asio context based on set_timer().
+    void on_timer(wspp::lib::error_code const &ec);
+
+    /// Called by WebsocketPP when a request is made that the client does not
+    /// mean to upgrade to a websocket connection.
+    void on_http(const wspp::connection_hdl &hdl);
+
+    /// Called by WebsocketPP when a request is made that the client wants to
+    /// upgrade to a websocket connection.
+    void on_open(const wspp::connection_hdl &hdl);
+
+    /// Called by WebsocketPP when a websocket connection is closed.
+    void on_close(const wspp::connection_hdl &hdl);
+
+    /// Called from Asio context when the server is to be shut down.
+    void on_shutdown();
 
 public:
-    /// Call from the SCS API telemetry initialization hook to start the
-    /// telemetry server.
-    static void init();
+    /// Starts the server. Call from a worker thread; this will not return until
+    /// the server has shut down.
+    void run(const std::filesystem::path &document_root, uint16_t port);
 
-    /// Call from the SCS API telemetry shutdown hook to shut down the telemetry
-    /// server.
-    static void shutdown();
+    /// Call from any thread to tell the server to stop accepting connections
+    /// and close all open connections.
+    void shutdown();
 };
