@@ -1,7 +1,7 @@
 #include "server.h"
 
-#include "config.h"
 #include "logger.h"
+#include "wspp_config.h"
 
 // TODO:
 //  - add http handler for testing
