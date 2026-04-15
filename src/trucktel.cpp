@@ -118,14 +118,14 @@ static void initialize(
     }
 
     // Log file within the trucktel directory.
-    Logger::set_file(trucktel_path / "log.txt");
+    Logger::set_file((trucktel_path / "log.txt").string());
 
     // Load the configuration file.
     ServerConfig server_config =
         load_config_file(trucktel_path / "config.yaml");
 
     // Initialize the data recording logic.
-    Recorder::init(version, init_params, game_install_path);
+    Recorder::init(version, init_params, game_install_path.string());
 
     // Initialize the HTTP server logic.
     server_config.document_root = trucktel_path / "www";

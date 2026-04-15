@@ -6,9 +6,9 @@
 
 HttpResponse HttpResponse::from_json(const nlohmann::json &json) {
     return {
-        .code = wspp::http::status_code::ok,
-        .content_type = CONTENT_TYPE_JSON,
-        .body = json.dump(),
+        wspp::http::status_code::ok,
+        CONTENT_TYPE_JSON,
+        json.dump(),
     };
 }
 
@@ -83,9 +83,7 @@ HttpResponse HttpHandler::handle_error(
            << "<h1>Error " << code << "</h1>"
            << "<p>" << pretty_message << "</p>"
            << "</body></head></html>";
-        return {
-            .code = code, .content_type = CONTENT_TYPE_HTML, .body = ss.str()
-        };
+        return {code, CONTENT_TYPE_HTML, ss.str()};
     }
 }
 

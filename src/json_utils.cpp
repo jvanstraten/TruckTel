@@ -105,13 +105,11 @@ nlohmann::json scs_value_to_json(const scs_value_t &value) {
 }
 
 NamedValue NamedValue::scalar(std::string name, nlohmann::json value) {
-    return NamedValue{
-        .name = std::move(name), .index = SCS_U32_NIL, .value = std::move(value)
-    };
+    return NamedValue{std::move(name), SCS_U32_NIL, std::move(value)};
 }
 
 NamedValue NamedValue::event_id(const std::string &event_id) {
-    return NamedValue{.name = "_", .index = SCS_U32_NIL, .value = event_id};
+    return NamedValue{"_", SCS_U32_NIL, event_id};
 }
 
 std::vector<NamedValue> copy_scs_attributes(
