@@ -43,6 +43,8 @@ static ServerConfig load_config_file(const std::filesystem::path &path) {
         ofs << "    then: application/json; charset=utf-8" << std::endl;
         ofs << "  - if: .*\\.js" << std::endl;
         ofs << "    then: text/javascript; charset=utf-8" << std::endl;
+        ofs << "  - if: .*\\.css" << std::endl;
+        ofs << "    then: text/css; charset=utf-8" << std::endl;
         ofs << "  - if: .*\\.svg" << std::endl;
         ofs << "    then: image/svg+xml; charset=utf-8" << std::endl;
         ofs << "  - if: .*\\.png" << std::endl;
