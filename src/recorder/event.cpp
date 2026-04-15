@@ -1,5 +1,7 @@
 #include "event.h"
 
+#include "logger.h"
+
 EventRecorder::EventRecorder(const std::chrono::system_clock::duration max_age)
     : max_age(max_age) {}
 
@@ -14,6 +16,7 @@ void EventRecorder::push(std::vector<NamedValue> event) {
     }
 
     // Push the event.
+    Logger::verbose("pushing event %llu", id_counter);
     events.emplace_back(Event{id_counter, now, std::move(event)});
 
     // Update the ID counter.
@@ -28,13 +31,18 @@ uint64_t EventRecorder::poll_init() {
 std::vector<std::vector<NamedValue>> EventRecorder::poll(uint64_t &next_id) {
     std::lock_guard guard(mutex);
 
+    // Exit early if there are no new events.
+    if (id_counter == next_id) return {};
+
     // Starting from the newest event, rewind the list until we find the
     // event with next_id or the start of the event list. The event that
     // came before that will already have been reported to this client.
     auto it = events.cend();
     while (it != events.cbegin()) {
         --it;
-        if (it->id == next_id) break;
+        if (it->id == next_id) {
+            break;
+        }
     }
 
     // Copy all the events that are new for this client into a JSON array.
@@ -43,8 +51,7 @@ std::vector<std::vector<NamedValue>> EventRecorder::poll(uint64_t &next_id) {
         result.emplace_back(it->data);
     }
 
-    // Update next_id to identify the event that will come after the last
-    // reported event.
-    next_id = events.back().id + 1;
+    // Update the ID.
+    next_id = id_counter;
     return result;
 }

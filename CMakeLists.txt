@@ -41,6 +41,7 @@ endif()
 # within the directory that contains the game binary.
 add_library(trucktel SHARED
         src/trucktel.cpp
+        src/api.h
         src/logger.cpp
         src/logger.h
         src/json_utils.h
@@ -55,6 +56,7 @@ add_library(trucktel SHARED
         src/recorder/recorder.cpp
         src/server/server_thread.h
         src/server/server_thread.cpp
+        src/server/config.h
         src/server/wspp_config.h
         src/server/server.h
         src/server/server.cpp
@@ -64,11 +66,9 @@ add_library(trucktel SHARED
         src/server/http.cpp
         src/server/database.h
         src/server/database.cpp
-        ${asio_SOURCE_DIR}/asio/src/asio.cpp
-        src/server/config.h
         src/server/websocket.h
         src/server/websocket.cpp
-        src/server/api.h
+        ${asio_SOURCE_DIR}/asio/src/asio.cpp
 )
 target_link_libraries(trucktel
         PRIVATE nlohmann_json::nlohmann_json

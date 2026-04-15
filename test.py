@@ -1,11 +1,10 @@
+import sys
+import json
 from websockets.sync.client import connect
-import time
 
-def hello():
-    with connect("ws://localhost:8080/ws") as websocket:
-        websocket.send("Hello world!")
-        while True:
-            message = websocket.recv()
-            print(f"Received: {message}")
-
-hello()
+with connect("ws://localhost:8080/api/ws/" + sys.argv[1] if len(sys.argv) > 1 else "") as websocket:
+    while True:
+        msg = websocket.recv()
+        msg_json = json.loads(msg)
+        msg_pretty = json.dumps(msg_json, indent=4)
+        print(msg_pretty)

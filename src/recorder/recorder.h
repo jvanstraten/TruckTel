@@ -13,9 +13,6 @@
 /// channels and provides asynchronous and thread-safe access to this data.
 class Recorder {
 private:
-    /// Maximum number of wheels for a truck or trailer queried.
-    static constexpr uint32_t MAX_WHEELS = 14;
-
     /// Initialization parameters passed to the plugin initialization function
     /// by the game.
     const scs_telemetry_init_params_v101_t *const init_params;

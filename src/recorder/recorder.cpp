@@ -8,6 +8,7 @@
 #include <common/scssdk_telemetry_trailer_common_channels.h>
 #include <common/scssdk_telemetry_truck_common_channels.h>
 
+#include "api.h"
 #include "json_utils.h"
 #include "logger.h"
 
@@ -56,11 +57,11 @@ void Recorder::record_event(const scs_event_t event, const void *event_info) {
             break;
         case SCS_TELEMETRY_EVENT_paused:
             channels.pause();
-            gameplay.push({NamedValue::event_id("paused")});
+            gameplay.push({NamedValue::event_id(API_EVENT_PAUSED)});
             break;
         case SCS_TELEMETRY_EVENT_started:
             channels.unpause();
-            gameplay.push({NamedValue::event_id("started")});
+            gameplay.push({NamedValue::event_id(API_EVENT_STARTED)});
             break;
         case SCS_TELEMETRY_EVENT_configuration:
             if (!event_info) return;
@@ -155,14 +156,21 @@ Recorder::Recorder(
     : init_params(init_params), gameplay(std::chrono::seconds(10)) {
     // Push basic game information.
     configuration.push(
-        "game",
-        {NamedValue::scalar("name", init_params->common.game_name),
-         NamedValue::scalar("id", init_params->common.game_id),
-         NamedValue::scalar(
-             "version", scs_version_to_json(init_params->common.game_version)
+        API_CONFIG_GAME,
+        {NamedValue::scalar(
+             API_CONFIG_GAME_ATTRIBUTE_NAME, init_params->common.game_name
          ),
-         NamedValue::scalar("api", scs_version_to_json(version)),
-         NamedValue::scalar("path", game_dir)}
+         NamedValue::scalar(
+             API_CONFIG_GAME_ATTRIBUTE_ID, init_params->common.game_id
+         ),
+         NamedValue::scalar(
+             API_CONFIG_GAME_ATTRIBUTE_VERSION,
+             scs_version_to_json(init_params->common.game_version)
+         ),
+         NamedValue::scalar(
+             API_CONFIG_GAME_ATTRIBUTE_API_VERSION, scs_version_to_json(version)
+         ),
+         NamedValue::scalar(API_CONFIG_GAME_ATTRIBUTE_INSTALL_DIR, game_dir)}
     );
 
     // Register event handlers.
@@ -292,7 +300,12 @@ Recorder::Recorder(
         {SCS_TELEMETRY_TRUCK_CHANNEL_hshifter_slot, SCS_U32_NIL,
          SCS_VALUE_TYPE_u32}
     );
-    // not implemented: SCS_TELEMETRY_TRUCK_CHANNEL_hshifter_selector
+    for (uint32_t i = 0; i < API_MAX_HSHIFTER_SELECTORS; i++) {
+        register_channel_handler(
+            {SCS_TELEMETRY_TRUCK_CHANNEL_hshifter_selector, i,
+             SCS_VALUE_TYPE_bool}
+        );
+    }
 
     // Register truck braking channels.
     register_channel_handler(
@@ -514,7 +527,8 @@ Recorder::Recorder(
     );
 
     // Register wheel channels.
-    for (uint32_t wheel_index = 0; wheel_index < MAX_WHEELS; wheel_index++) {
+    for (uint32_t wheel_index = 0; wheel_index < API_MAX_WHEELS;
+         wheel_index++) {
         register_channel_handler(
             {SCS_TELEMETRY_TRUCK_CHANNEL_wheel_susp_deflection, wheel_index,
              SCS_VALUE_TYPE_float}
@@ -594,7 +608,8 @@ Recorder::Recorder(
     );
 
     // Register trailer wheel channels.
-    for (uint32_t wheel_index = 0; wheel_index < MAX_WHEELS; wheel_index++) {
+    for (uint32_t wheel_index = 0; wheel_index < API_MAX_WHEELS;
+         wheel_index++) {
         register_trailer_handler(
             {SCS_TELEMETRY_TRAILER_CHANNEL_wheel_susp_deflection, wheel_index,
              SCS_VALUE_TYPE_float}

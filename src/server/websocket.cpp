@@ -5,22 +5,8 @@
 #include "recorder/recorder.h"
 #include "server.h"
 
-[[nodiscard]] wspp::Server::connection_ptr WebSocket::get_connection() const {
-    return endpoint.get_con_from_hdl(hdl);
-}
-
-void WebSocket::close(
-    const wspp::close::status::value code, std::string const &reason
-) const {
-    try {
-        get_connection()->close(code, reason);
-    } catch (const std::exception &e) {
-        Logger::error("failed to close connection: %s", e.what());
-    }
-}
-
 void WebSocket::send(const nlohmann::json &data) {
-    get_connection()->send(data.dump());
+    con->send(data.dump());
     last_message = std::chrono::system_clock::now();
 }
 
@@ -72,25 +58,21 @@ void WebSocket::update_internal(const bool first) {
 }
 
 WebSocket::WebSocket(
-    wspp::Server &endpoint,
-    wspp::connection_hdl hdl,
+    wspp::Server::connection_ptr con,
     const DataType data_type,
     const Database &database,
     std::vector<std::string> database_query,
     const unsigned long throttle
 )
-    : endpoint(endpoint), hdl(std::move(hdl)), data_type(data_type),
+    : con(std::move(con)), data_type(data_type),
       database_query(std::move(database_query)), database(database),
       throttle(throttle) {
     update_internal(true);
 }
 
 std::optional<WebSocket> WebSocket::handle_request(
-    wspp::Server &endpoint,
-    const wspp::connection_hdl &hdl,
-    const Database &database
+    const wspp::Server::connection_ptr &con, const Database &database
 ) {
-    auto con = endpoint.get_con_from_hdl(hdl);
     try {
         // Check that this is a websocket API URL.
         Url url(con->get_resource());
@@ -124,7 +106,7 @@ std::optional<WebSocket> WebSocket::handle_request(
 
             // The event data type has one extra command that specifies the
             // data structuring.
-            if (api_command.size() != 1) {
+            if (api_command.size() < 1) {
                 con->close(
                     wspp::close::status::normal,
                     "missing structure in " + url.join_path()
@@ -149,7 +131,7 @@ std::optional<WebSocket> WebSocket::handle_request(
             throttle = 0;
 
             // No database query expected for event streams.
-            if (!api_command.empty()) {
+            if (api_command.size() > 1) {
                 con->close(
                     wspp::close::status::normal,
                     "unexpected arguments in " + url.join_path()
@@ -182,9 +164,7 @@ std::optional<WebSocket> WebSocket::handle_request(
             }
         }
 
-        return WebSocket(
-            endpoint, hdl, data_type, database, api_command, throttle
-        );
+        return WebSocket(con, data_type, database, api_command, throttle);
     } catch (MalformedUrl &e) {
         con->close(wspp::close::status::normal, e.what());
         return {};
@@ -198,10 +178,10 @@ void WebSocket::update() {
     try {
         update_internal(false);
     } catch (std::exception &e) {
-        close(wspp::close::status::internal_endpoint_error, e.what());
+        con->close(wspp::close::status::internal_endpoint_error, e.what());
     }
 }
 
 void WebSocket::shutdown() {
-    close(wspp::close::status::going_away, "TruckTel plugin unload");
+    con->close(wspp::close::status::going_away, "TruckTel plugin unload");
 }

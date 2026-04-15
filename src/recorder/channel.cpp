@@ -1,21 +1,34 @@
 #include "channel.h"
 
+#include "api.h"
 #include "json_utils.h"
 
 ChannelRecorder::ChannelRecorder() {
     // Register "pseudochannels" for the information carried with the
     // start-frame event.
     idx_render_time = register_channel(
-        {"frame.render_time", SCS_U32_NIL, SCS_VALUE_TYPE_u64}
+        {API_FRAME_CHANNEL_RENDER_TIME, SCS_U32_NIL, SCS_VALUE_TYPE_u64}
+    );
+    idx_fps = register_channel(
+        {API_FRAME_CHANNEL_FPS, SCS_U32_NIL, SCS_VALUE_TYPE_float}
+    );
+    idx_fps_filtered = register_channel(
+        {API_FRAME_CHANNEL_FPS_FILTERED, SCS_U32_NIL, SCS_VALUE_TYPE_float}
     );
     idx_simulation_time = register_channel(
-        {"frame.simulation_time", SCS_U32_NIL, SCS_VALUE_TYPE_u64}
+        {API_FRAME_CHANNEL_SIMULATION_TIME, SCS_U32_NIL, SCS_VALUE_TYPE_u64}
     );
     idx_paused_simulation_time = register_channel(
-        {"frame.paused_simulation_time", SCS_U32_NIL, SCS_VALUE_TYPE_u64}
+        {API_FRAME_CHANNEL_PAUSED_SIMULATION_TIME, SCS_U32_NIL,
+         SCS_VALUE_TYPE_u64}
     );
-    idx_paused =
-        register_channel({"frame.paused", SCS_U32_NIL, SCS_VALUE_TYPE_bool});
+    idx_paused = register_channel(
+        {API_FRAME_CHANNEL_PAUSED, SCS_U32_NIL, SCS_VALUE_TYPE_bool}
+    );
+    idx_paused_simulation_time = register_channel(
+        {API_FRAME_CHANNEL_PAUSED_SIMULATION_TIME, SCS_U32_NIL,
+         SCS_VALUE_TYPE_u64}
+    );
 }
 
 size_t ChannelRecorder::register_channel(ChannelMetadata metadata) {
@@ -33,12 +46,36 @@ void ChannelRecorder::unpause() {
 }
 
 void ChannelRecorder::start(const scs_telemetry_frame_start_t &info) {
+    // Determine render time delta since previous frame.
+    const int64_t render_time = static_cast<int64_t>(info.render_time);
+    const int64_t time_delta = render_time - prev_render_time;
+
+    // If this time delta seems reasonable, determine current frames per second.
+    constexpr auto ONE_SECOND = 1000 * 1000;
+    if (!paused && prev_render_time_valid && time_delta >= 0 &&
+        time_delta < 10 * ONE_SECOND) {
+        // Do not invalidate FPS data when the game skips rendering for a
+        // simulation frame.
+        if (time_delta != 0) {
+            fps = ONE_SECOND / static_cast<float>(time_delta);
+            if (!fps_valid) fps_filtered = fps;
+            fps_filtered += (fps - fps_filtered) * API_FPS_FILTER_CONSTANT;
+            fps_valid = true;
+        }
+    } else {
+        fps_valid = false;
+    }
+
+    // Store previous timestamp for the next FPS computation.
+    prev_render_time = render_time;
+    prev_render_time_valid = !paused;
+
     // Clear all items in the frame.
     for (auto &item : buffers[1 - front]) {
         item.type = SCS_VALUE_TYPE_INVALID;
     }
 
-    // Sets frame information.
+    // Set frame information.
     scs_value_t val = {};
     val.type = SCS_VALUE_TYPE_u64;
     val.value_u64.value = info.render_time;
@@ -50,6 +87,15 @@ void ChannelRecorder::start(const scs_telemetry_frame_start_t &info) {
     val.type = SCS_VALUE_TYPE_bool;
     val.value_bool.value = paused;
     push(idx_paused, val);
+
+    // Set FPS data only when the FPS computation is valid.
+    if (fps_valid) {
+        val.type = SCS_VALUE_TYPE_float;
+        val.value_float.value = fps;
+        push(idx_fps, val);
+        val.value_float.value = fps_filtered;
+        push(idx_fps_filtered, val);
+    }
 }
 
 void ChannelRecorder::push(const size_t index, const scs_value_t &value) {

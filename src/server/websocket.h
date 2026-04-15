@@ -10,19 +10,8 @@
 /// Class managing a single websocket connection.
 class WebSocket {
 
-    /// Server endpoint reference, for upgrading the connection pointer.
-    wspp::Server &endpoint;
-
     /// Connection handle.
-    const wspp::connection_hdl hdl;
-
-    /// Returns the upgraded connection handle.
-    [[nodiscard]] wspp::Server::connection_ptr get_connection() const;
-
-    /// Closes the connection.
-    void close(
-        wspp::close::status::value code, std::string const &reason
-    ) const;
+    const wspp::Server::connection_ptr con;
 
     /// Requested websocket data type.
     const enum struct DataType {
@@ -71,8 +60,7 @@ class WebSocket {
 
     /// Constructor.
     WebSocket(
-        wspp::Server &endpoint,
-        wspp::connection_hdl hdl,
+        wspp::Server::connection_ptr con,
         DataType data_type,
         const Database &database,
         std::vector<std::string> database_query,
@@ -83,9 +71,7 @@ public:
     /// Main function for handling a websocket upgrade request. An instance is
     /// returned if the connection was accepted.
     [[nodiscard]] static std::optional<WebSocket> handle_request(
-        wspp::Server &endpoint,
-        const wspp::connection_hdl &hdl,
-        const Database &database
+        const wspp::Server::connection_ptr &con, const Database &database
     );
 
     /// Call from Asio context to update the websocket connection.

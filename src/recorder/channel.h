@@ -39,6 +39,21 @@ private:
     /// Whether the game is paused.
     bool paused = true;
 
+    /// The previous render time reported by the game.
+    int64_t prev_render_time = 0;
+
+    /// Whether prev_render_time is valid.
+    bool prev_render_time_valid = false;
+
+    /// The most recently computed game FPS.
+    float fps = 0.0f;
+
+    /// Game FPS with a low-pass filter applied.
+    float fps_filtered = 0.0f;
+
+    /// Whether fps and fps_filtered are currently valid.
+    bool fps_valid = false;
+
     /// The mutex that protects the front buffer and the index thereof. The
     /// back buffer is NOT protected, and must only be accessed by the SCS API
     /// side.
@@ -46,6 +61,8 @@ private:
 
     // Indices of pseudochannels.
     size_t idx_render_time;
+    size_t idx_fps;
+    size_t idx_fps_filtered;
     size_t idx_simulation_time;
     size_t idx_paused_simulation_time;
     size_t idx_paused;

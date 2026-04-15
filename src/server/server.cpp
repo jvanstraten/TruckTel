@@ -43,7 +43,14 @@ void Server::on_http(const wspp::connection_hdl &hdl) {
 }
 
 void Server::on_open(const wspp::connection_hdl &hdl) {
-    if (auto result = WebSocket::handle_request(endpoint, hdl, database)) {
+    // Upgrade our connection handle to a full connection_ptr.
+    const wspp::Server::connection_ptr con = endpoint.get_con_from_hdl(hdl);
+
+    // Pass control to the websocket handler. This may close the websocket
+    // immediately, in which case we don't have to do anything. If it remains
+    // open, we need to keep track of the connection to send it updates and
+    // potentially a server-side shutdown command.
+    if (auto result = WebSocket::handle_request(con, database)) {
         connections.insert(std::make_pair(hdl, *result));
     }
 }
