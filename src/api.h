@@ -154,8 +154,9 @@ static constexpr auto API_MAX_WHEELS = 14;
 
 /// The SCS API headers don't specify a maximum supported number of items for
 /// SCS_TELEMETRY_TRUCK_CHANNEL_hshifter_selector. This value was determined
-/// experimentally from ETS2 1.18.
-static constexpr auto API_MAX_HSHIFTER_SELECTORS = 100;
+/// experimentally from ETS2 1.18. (I don't really understand what this channel
+/// does to begin with and don't have an H-shifter to reverse-engineer it.)
+static constexpr auto API_MAX_HSHIFTER_SELECTORS = 2;
 
 //==============================================================================
 // TruckTel-defined events
