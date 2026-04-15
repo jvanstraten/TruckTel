@@ -2,6 +2,7 @@
 
 #include <sstream>
 
+#include "api.h"
 #include "logger.h"
 #include "recorder/recorder.h"
 
@@ -155,9 +156,9 @@ nlohmann::json Database::get_data_multi(
 }
 
 nlohmann::json Database::get_data(const std::vector<std::string> &query) const {
-    // The first element of the query is the "method".
-    if (query.empty()) return "missing method";
-    const auto method = query.front();
+    // The first element of the query specifies the structuring of the data.
+    if (query.empty()) return "missing structure";
+    const auto structure = query.front();
 
     // The remaining elements are joined with periods to form a period-separated
     // path.
@@ -168,14 +169,14 @@ nlohmann::json Database::get_data(const std::vector<std::string> &query) const {
     }
 
     // Handle methods.
-    if (method == "single") {
+    if (structure == API_STRUCTURE_SINGLE) {
         return get_data_single(prefix.str());
     }
-    if (method == "struct") {
+    if (structure == API_STRUCTURE_STRUCT) {
         return get_data_multi(prefix.str(), false);
     }
-    if (method == "flat") {
+    if (structure == API_STRUCTURE_FLAT) {
         return get_data_multi(prefix.str(), true);
     }
-    return "unrecognized method " + method;
+    return "unrecognized method " + structure;
 }

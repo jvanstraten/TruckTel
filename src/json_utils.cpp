@@ -130,3 +130,83 @@ std::vector<NamedValue> copy_scs_attributes(
     }
     return result;
 }
+
+nlohmann::json named_values_to_json(
+    const std::vector<NamedValue> &data, bool flatten
+) {
+
+    // Named values on the SCS telemetry API that represent arrays are sent
+    // itemwise. To convert this to a sane JSON format, we first need to group
+    // items by their corresponding array.
+    std::map<std::string, std::pair<bool, std::vector<nlohmann::json>>>
+        unflattened;
+    for (const auto &item : data) {
+        if (item.value.is_null()) continue;
+        auto [it, _] = unflattened.emplace(
+            item.name, std::pair<bool, std::vector<nlohmann::json>>()
+        );
+        auto &[is_array, items] = it->second;
+        is_array = item.index != SCS_U32_NIL;
+        const auto index = item.index != SCS_U32_NIL ? item.index : 0;
+        while (items.size() <= index)
+            items.emplace_back();
+        items[index] = item.value;
+    }
+
+    // Now build the JSON object.
+    nlohmann::json result;
+    for (const auto &[key, value] : unflattened) {
+        const auto &[is_array, items] = value;
+        auto json_value =
+            (is_array || items.empty()) ? nlohmann::json(items) : items[0];
+        json_assign_path(result, key, json_value, flatten);
+    }
+    return result;
+}
+
+nlohmann::json delta_encode(
+    const nlohmann::json &new_data, const nlohmann::json &previous_data
+) {
+    // Handle non-object types.
+    if (!new_data.is_object() || !previous_data.is_object()) {
+
+        // Return null if the data has not changed. The caller must interpret
+        // the null as a removal of the corresponding key.
+        if (new_data == previous_data) return nullptr;
+
+        return new_data;
+    }
+
+    // Both new_data and previous_data must now be objects. Handle new data
+    // first.
+    nlohmann::json result = {};
+    for (const auto &[key, new_value] : new_data.items()) {
+
+        // If this key does not exist in the previous object, copy the new value
+        // into the result if it is not trivial (null, empty object, or empty
+        // array). Otherwise, perform delta-encoding recursively.
+        const auto previous_value_it = previous_data.find(key);
+        nlohmann::json delta;
+        if (previous_value_it == previous_data.end()) {
+            delta = new_value;
+        } else {
+            delta = delta_encode(new_value, *previous_value_it);
+        }
+
+        // Insert the item only if it carries data (not null, an empty array,
+        // or an empty object).
+        if (!delta.empty()) {
+            result[key] = delta;
+        }
+    }
+
+    // Check for keys that exist in previous_data but not in new_data. Insert
+    // nulls for those to signal the removal.
+    for (const auto &[key, previous_value] : previous_data.items()) {
+        if (!new_data.count(key)) {
+            result[key] = nullptr;
+        }
+    }
+
+    return result;
+}

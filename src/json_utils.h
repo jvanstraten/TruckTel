@@ -48,3 +48,20 @@ struct NamedValue {
 std::vector<NamedValue> copy_scs_attributes(
     const scs_named_value_t *attributes
 );
+
+/// Converts a vector of named values to JSON. This first unflattens indexed
+/// values, and then uses json_assign_path(..., flatten) to construct the JSON
+/// object.
+nlohmann::json named_values_to_json(
+    const std::vector<NamedValue> &data, bool flatten
+);
+
+/// Performs delta-encoding of JSON objects. The result will have the data from
+/// new_data, except (recursively until a non-object is encountered):
+///  - object items that are equal in both new_data and previous_data are
+///    omitted;
+///  - object items that exist in previous_data but not in new_data are returned
+///    mapping to null.
+nlohmann::json delta_encode(
+    const nlohmann::json &new_data, const nlohmann::json &previous_data
+);

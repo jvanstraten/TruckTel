@@ -3,6 +3,8 @@
 #include <optional>
 #include <sstream>
 
+#include "api.h"
+
 /// Returns whether the given character is printable ASCII. Not using the
 /// standard library to avoid locale shenanigans; this doesn't need to be
 /// complicated.
@@ -170,15 +172,15 @@ bool Url::match_path_element(
 }
 
 bool Url::is_api() const {
-    return match_path_element(0, "api");
+    return match_path_element(0, API_ROOT);
 }
 
 bool Url::is_ws() const {
-    return match_path_element(1, "ws");
+    return match_path_element(1, API_WS);
 }
 
 bool Url::is_rest() const {
-    return match_path_element(1, "rest");
+    return match_path_element(1, API_REST);
 }
 
 std::vector<std::string> Url::get_api_path_elements() const {

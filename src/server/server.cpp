@@ -1,15 +1,18 @@
 #include "server.h"
 
-void Server::update_database() {
-    database.update();
-    last_update = std::chrono::system_clock::now();
-}
-
 void Server::set_timer() {
     timer = endpoint.set_timer(
         MIN_UPDATE_PERIOD_MILLIS,
         [this](wspp::lib::error_code const &ec) { on_timer(ec); }
     );
+}
+
+void Server::on_update() {
+    last_update = std::chrono::system_clock::now();
+    database.update();
+    for (auto &[_, websocket] : connections) {
+        websocket.update();
+    }
 }
 
 void Server::on_timer(wspp::lib::error_code const &ec) {
@@ -19,7 +22,7 @@ void Server::on_timer(wspp::lib::error_code const &ec) {
     // the game.
     if (std::chrono::system_clock::now() - last_update >
         std::chrono::milliseconds(MIN_UPDATE_PERIOD_MILLIS)) {
-        update_database();
+        update();
     }
 
     // Reset the timer.
@@ -40,27 +43,27 @@ void Server::on_http(const wspp::connection_hdl &hdl) {
 }
 
 void Server::on_open(const wspp::connection_hdl &hdl) {
-    // TODO
-    connections.insert(hdl);
+    if (auto result = WebSocket::handle_request(endpoint, hdl, database)) {
+        connections.insert(std::make_pair(hdl, *result));
+    }
 }
 
 void Server::on_close(const wspp::connection_hdl &hdl) {
-    // TODO
     connections.erase(hdl);
 }
 
 void Server::on_shutdown() {
+    Logger::info("on_shutdown() start");
     endpoint.stop_listening();
-    Logger::info("on_shutdown");
-    for (const auto &hdl : connections) {
-        Logger::info("Closing a connection...");
-        endpoint.close(
-            hdl, wspp::close::status::going_away, "TruckTel plugin unload"
-        );
+    for (auto &[_, websocket] : connections) {
+        Logger::info("shutting down socket");
+        websocket.shutdown();
     }
+    Logger::info("cancel timer");
     if (timer) {
         timer->cancel();
     }
+    Logger::info("on_shutdown() complete");
 }
 
 void Server::run(const ServerConfig &config) {
@@ -112,5 +115,5 @@ void Server::shutdown() {
 }
 
 void Server::update() {
-    asio::post(endpoint.get_io_service(), [this]() { update_database(); });
+    asio::post(endpoint.get_io_service(), [this]() { on_update(); });
 }

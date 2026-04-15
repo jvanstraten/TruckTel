@@ -36,12 +36,6 @@ struct HttpResponse {
 /// Class for handling HTTP requests.
 class HttpHandler {
 private:
-    /// Exception class used to return 404 errors.
-    struct FileNotFound : std::runtime_error {
-        explicit FileNotFound(const std::string &path)
-            : std::runtime_error(path) {}
-    };
-
     /// Document root for serving static files.
     std::filesystem::path document_root;
 

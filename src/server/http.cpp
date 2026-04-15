@@ -2,6 +2,8 @@
 
 #include <regex>
 
+#include "server.h"
+
 HttpResponse HttpResponse::from_json(const nlohmann::json &json) {
     return {
         .code = wspp::http::status_code::ok,
