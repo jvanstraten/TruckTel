@@ -4,6 +4,7 @@
 #include <stdexcept>
 #include <string>
 
+#include "database.h"
 #include "url.h"
 #include "wspp_config.h"
 
@@ -23,6 +24,9 @@ struct HttpResponse {
 
     /// Response body.
     std::string body;
+
+    /// Constructs a JSON response.
+    static HttpResponse from_json(const nlohmann::json &json);
 };
 
 /// Class for handling HTTP requests.
@@ -36,6 +40,9 @@ private:
 
     /// Document root for serving static files.
     std::filesystem::path document_root;
+
+    /// Database to serve REST values from.
+    Database *database = nullptr;
 
     /// Handles serving static pages from the document root.
     [[nodiscard]] HttpResponse handle_static(const Url &url) const;
@@ -54,8 +61,10 @@ private:
     ) const;
 
 public:
-    /// Sets the document root for serving static files.
-    void set_document_root(const std::filesystem::path &new_document_root);
+    /// Configures the server.
+    void configure(
+        const std::filesystem::path &new_document_root, Database &new_database
+    );
 
     /// Main function for handling an HTTP request.
     [[nodiscard]] HttpResponse handle_http(const std::string &resource) const;

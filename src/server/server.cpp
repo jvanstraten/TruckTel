@@ -66,8 +66,8 @@ void Server::on_shutdown() {
 void Server::run(
     const std::filesystem::path &document_root, const uint16_t port
 ) {
-    // Store the document root for serving static files.
-    http_handler.set_document_root(document_root);
+    // Configure the HTTP handler.
+    http_handler.configure(document_root, database);
 
     // Set up masks for logging.
     // TODO: make configurable

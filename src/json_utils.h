@@ -9,9 +9,14 @@
 /// should be, because the paths used by the SCS API are not uniform enough to
 /// work with a naive implementation: non-leaf paths can have data in them.
 /// Whenever that happens, the data of a non-leaf node is put in a node with
-/// key "_".
+/// key "_". Whenever this smartness doesn't work, the flatten flag can be set
+/// to basically ignore separators in the path, making this function mostly
+/// trivial.
 void json_assign_path(
-    nlohmann::json &json, const std::string &path, const nlohmann::json &data
+    nlohmann::json &json,
+    const std::string &path,
+    const nlohmann::json &data,
+    bool flatten
 );
 
 /// Converts an SCS version number to a JSON array.

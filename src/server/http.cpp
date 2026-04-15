@@ -2,6 +2,14 @@
 
 #include <regex>
 
+HttpResponse HttpResponse::from_json(const nlohmann::json &json) {
+    return {
+        .code = wspp::http::status_code::ok,
+        .content_type = CONTENT_TYPE_JSON,
+        .body = json.dump(),
+    };
+}
+
 HttpResponse HttpHandler::handle_static(const Url &url) const {
     // If we don't have a document root for some reason, always return file not
     // found.
@@ -30,7 +38,9 @@ HttpResponse HttpHandler::handle_static(const Url &url) const {
 }
 
 HttpResponse HttpHandler::handle_rest(const Url &url) const {
-    throw FileNotFound(url.join_path());
+    if (!database) throw std::runtime_error("missing database");
+    const auto json = database->get_data(url.get_api_path_elements());
+    return HttpResponse::from_json(json);
 }
 
 HttpResponse HttpHandler::handle_websocket(const Url &url) const {
@@ -69,10 +79,11 @@ HttpResponse HttpHandler::handle_error(
     }
 }
 
-void HttpHandler::set_document_root(
-    const std::filesystem::path &new_document_root
+void HttpHandler::configure(
+    const std::filesystem::path &new_document_root, Database &new_database
 ) {
     document_root = new_document_root;
+    database = &new_database;
 }
 
 HttpResponse HttpHandler::handle_http(const std::string &resource) const {

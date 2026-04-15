@@ -181,6 +181,10 @@ bool Url::is_rest() const {
     return match_path_element(1, "rest");
 }
 
+std::vector<std::string> Url::get_api_path_elements() const {
+    return std::vector(path_elements.begin() + 2, path_elements.end());
+}
+
 /// Returns whether the given character is probably not okay in a filesystem
 /// path element.
 static bool is_illegal_path_char(const int c) {

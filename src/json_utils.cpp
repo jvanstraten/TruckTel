@@ -1,7 +1,10 @@
 #include "json_utils.h"
 
 void json_assign_path(
-    nlohmann::json &json, const std::string &path, const nlohmann::json &data
+    nlohmann::json &json,
+    const std::string &path,
+    const nlohmann::json &data,
+    const bool flatten
 ) {
     size_t start = 0;
     auto json_ptr = &json;
@@ -16,7 +19,7 @@ void json_assign_path(
         }
 
         // See if there is another separator.
-        const auto pos = path.find('.', start);
+        const auto pos = flatten ? std::string::npos : path.find('.', start);
         const auto element = path.substr(start, pos - start);
         if (pos == std::string::npos) {
 
@@ -45,6 +48,8 @@ nlohmann::json scs_version_to_json(const scs_u32_t version) {
 
 nlohmann::json scs_value_to_json(const scs_value_t &value) {
     switch (value.type) {
+        case SCS_VALUE_TYPE_INVALID:
+            return nullptr;
         case SCS_VALUE_TYPE_bool:
             return value.value_bool.value ? true : false;
         case SCS_VALUE_TYPE_s32:
@@ -61,39 +66,36 @@ nlohmann::json scs_value_to_json(const scs_value_t &value) {
             return value.value_double.value;
         case SCS_VALUE_TYPE_fvector:
             return {
-                {"x", value.value_fvector.x},
-                {"y", value.value_fvector.y},
-                {"z", value.value_fvector.z}
+                value.value_fvector.x, value.value_fvector.y,
+                value.value_fvector.z
             };
         case SCS_VALUE_TYPE_dvector:
             return {
-                {"x", value.value_dvector.x},
-                {"y", value.value_dvector.y},
-                {"z", value.value_dvector.z}
+                value.value_dvector.x, value.value_dvector.y,
+                value.value_dvector.z
             };
         case SCS_VALUE_TYPE_euler:
             return {
-                {"heading", value.value_euler.heading},
-                {"pitch", value.value_euler.pitch},
-                {"roll", value.value_euler.roll}
+                value.value_euler.heading, value.value_euler.pitch,
+                value.value_euler.roll
             };
         case SCS_VALUE_TYPE_fplacement:
             return {
-                {"x", value.value_fplacement.position.x},
-                {"y", value.value_fplacement.position.y},
-                {"z", value.value_fplacement.position.z},
-                {"heading", value.value_fplacement.orientation.heading},
-                {"pitch", value.value_fplacement.orientation.pitch},
-                {"roll", value.value_fplacement.orientation.roll}
+                value.value_fplacement.position.x,
+                value.value_fplacement.position.y,
+                value.value_fplacement.position.z,
+                value.value_fplacement.orientation.heading,
+                value.value_fplacement.orientation.pitch,
+                value.value_fplacement.orientation.roll
             };
         case SCS_VALUE_TYPE_dplacement:
             return {
-                {"x", value.value_dplacement.position.x},
-                {"y", value.value_dplacement.position.y},
-                {"z", value.value_dplacement.position.z},
-                {"heading", value.value_dplacement.orientation.heading},
-                {"pitch", value.value_dplacement.orientation.pitch},
-                {"roll", value.value_dplacement.orientation.roll}
+                value.value_dplacement.position.x,
+                value.value_dplacement.position.y,
+                value.value_dplacement.position.z,
+                value.value_dplacement.orientation.heading,
+                value.value_dplacement.orientation.pitch,
+                value.value_dplacement.orientation.roll
             };
         case SCS_VALUE_TYPE_string:
             return value.value_string.value;

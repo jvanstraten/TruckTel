@@ -47,6 +47,9 @@ struct Url {
     /// Returns whether this is a REST URL. Valid only if is_api() returns true.
     [[nodiscard]] bool is_rest() const;
 
+    /// Returns the path elements that define the API call.
+    [[nodiscard]] std::vector<std::string> get_api_path_elements() const;
+
     /// Constructs a filesystem path from the path elements in the URL. This
     /// will throw a MalformedUrl exception if the path is likely unsafe. If
     /// the resulting path points to a directory, index.html is appended.

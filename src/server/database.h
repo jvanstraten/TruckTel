@@ -62,6 +62,16 @@ private:
     /// Version of the configuration data.
     uint64_t configuration_version = 0;
 
+    /// Builds JSON for a scalar based on its indix.
+    [[nodiscard]] nlohmann::json get_json_for(
+        const ValueIndex &value_index
+    ) const;
+
+    /// Builds JSON for a single key based on its indices.
+    [[nodiscard]] nlohmann::json get_json_for(
+        const ValueIndices &value_indices
+    ) const;
+
     /// Returns a reference to the ValueIndex in the index that corresponds to
     /// the given key and value, adding to the index if necessary.
     ValueIndex &get_value_index_for(
@@ -88,4 +98,26 @@ private:
 public:
     /// Poll the recorder to update the data in the database.
     void update();
+
+    /// Returns JSON data for a single value. Returns null if the value is not
+    /// in the database.
+    [[nodiscard]] nlohmann::json get_data_single(const std::string &key) const;
+
+    /// Returns JSON data for values matching the given prefix. Returns an empty
+    /// object if nothing matches. If flatten is false, an attempt is made to
+    /// return the data in a sensible structured form, but there might be
+    /// conflicts in that case if SCS defines a key to refer both to a value and
+    /// a node containing subkeys. In that case, the value of non-leaf nodes is
+    /// punted to a leaf node with a _ key. To avoid all these shenanigans,
+    /// flatten can be set to true to get a single JSON object with all the
+    /// keys in it directly, irrespective of hierarchy. But this costs more
+    /// bandwidth and might be more annoying to work with.
+    [[nodiscard]] nlohmann::json get_data_multi(
+        const std::string &prefix, bool flatten
+    ) const;
+
+    /// Returns data for the given API query.
+    [[nodiscard]] nlohmann::json get_data(
+        const std::vector<std::string> &query
+    ) const;
 };

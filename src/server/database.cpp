@@ -1,6 +1,36 @@
 #include "database.h"
 
+#include <sstream>
+
+#include "logger.h"
 #include "recorder/recorder.h"
+
+nlohmann::json Database::get_json_for(const ValueIndex &value_index) const {
+    switch (value_index.source) {
+        case ValueSource::CHANNEL:
+            return scs_value_to_json(channel_data.at(value_index.index));
+        case ValueSource::CONFIGURATION:
+            return configuration_data.at(value_index.index);
+        default:
+            return nullptr;
+    }
+}
+
+nlohmann::json Database::get_json_for(const ValueIndices &value_indices) const {
+    if (value_indices.scalar.source != ValueSource::NONE) {
+        return get_json_for(value_indices.scalar);
+    }
+    nlohmann::json result = nlohmann::json::array();
+    for (size_t i = 0; i < value_indices.vector.size(); i++) {
+        auto j = get_json_for(value_indices.vector[i]);
+        if (j.is_null()) continue;
+        while (result.size() < i)
+            result.emplace_back(nullptr);
+        result.emplace_back(j);
+    }
+    if (result.empty()) return nullptr;
+    return result;
+}
 
 Database::ValueIndex &Database::get_value_index_for(
     const std::string &key, const scs_u32_t array_index
@@ -56,6 +86,7 @@ void Database::update_configuration_item(
             value_index.source = ValueSource::CONFIGURATION;
             value_index.index = configuration_data.size();
             configuration_data.emplace_back();
+            break;
         case ValueSource::CHANNEL:
             // Conflict between configuration and channel, apparently?
             // Ignore the configuration value, channel takes precedence.
@@ -94,4 +125,57 @@ void Database::update_configuration() {
 void Database::update() {
     update_channels();
     update_configuration();
+}
+
+nlohmann::json Database::get_data_single(const std::string &key) const {
+    auto it = index.find(key);
+    if (it == index.end()) return nullptr;
+    return get_json_for(it->second);
+}
+
+nlohmann::json Database::get_data_multi(
+    const std::string &prefix, const bool flatten
+) const {
+    nlohmann::json result;
+    const std::string ext_prefix = prefix.empty() ? "" : prefix + ".";
+    for (const auto &[key, indices] : index) {
+        // Check if the key matches the prefix.
+        if (key != prefix && key.substr(0, ext_prefix.size()) != ext_prefix) {
+            continue;
+        }
+
+        // Get the value and check that it isn't null.
+        auto value = get_data_single(key);
+        if (value.is_null()) continue;
+
+        // Add the value to the result.
+        json_assign_path(result, key, value, flatten);
+    }
+    return result;
+}
+
+nlohmann::json Database::get_data(const std::vector<std::string> &query) const {
+    // The first element of the query is the "method".
+    if (query.empty()) return "missing method";
+    const auto method = query.front();
+
+    // The remaining elements are joined with periods to form a period-separated
+    // path.
+    std::ostringstream prefix{};
+    for (size_t i = 1; i < query.size(); i++) {
+        if (i > 1) prefix << ".";
+        prefix << query[i];
+    }
+
+    // Handle methods.
+    if (method == "single") {
+        return get_data_single(prefix.str());
+    }
+    if (method == "struct") {
+        return get_data_multi(prefix.str(), false);
+    }
+    if (method == "flat") {
+        return get_data_multi(prefix.str(), true);
+    }
+    return "unrecognized method " + method;
 }

@@ -83,8 +83,4 @@ public:
     /// frame. The indices in the vector correspond to those returned by
     /// channels().
     void poll(std::vector<scs_value_t> &data);
-
-    /// Generates JSON data of everything in the most recent frame.
-    /// TODO: move this
-    nlohmann::json poll_json();
 };
