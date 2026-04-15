@@ -1,13 +1,10 @@
 #include "json_utils.h"
 
-/// Assigns data to the hierarchical key identified by path in json. The
-/// path separator is a period. This tries to be smarter than it really
-/// should be, because the paths used by the SCS API are not uniform enough to
-/// work with a naive implementation: non-leaf paths can have data in them.
-/// Whenever that happens, the data of a non-leaf node is put in a node with
-/// key "_".
 void json_assign_path(
-    nlohmann::json &json, const std::string &path, const nlohmann::json &data
+    nlohmann::json &json,
+    const std::string &path,
+    const nlohmann::json &data,
+    const bool flatten
 ) {
     size_t start = 0;
     auto json_ptr = &json;
@@ -22,7 +19,7 @@ void json_assign_path(
         }
 
         // See if there is another separator.
-        const auto pos = path.find('.', start);
+        const auto pos = flatten ? std::string::npos : path.find('.', start);
         const auto element = path.substr(start, pos - start);
         if (pos == std::string::npos) {
 
@@ -45,14 +42,14 @@ void json_assign_path(
     }
 }
 
-/// Converts an SCS version number to a JSON array.
 nlohmann::json scs_version_to_json(const scs_u32_t version) {
     return {SCS_GET_MAJOR_VERSION(version), SCS_GET_MINOR_VERSION(version)};
 }
 
-/// Converts an scs_value_t variant into an equivalent JSON form.
 nlohmann::json scs_value_to_json(const scs_value_t &value) {
     switch (value.type) {
+        case SCS_VALUE_TYPE_INVALID:
+            return nullptr;
         case SCS_VALUE_TYPE_bool:
             return value.value_bool.value ? true : false;
         case SCS_VALUE_TYPE_s32:
@@ -69,39 +66,36 @@ nlohmann::json scs_value_to_json(const scs_value_t &value) {
             return value.value_double.value;
         case SCS_VALUE_TYPE_fvector:
             return {
-                {"x", value.value_fvector.x},
-                {"y", value.value_fvector.y},
-                {"z", value.value_fvector.z}
+                value.value_fvector.x, value.value_fvector.y,
+                value.value_fvector.z
             };
         case SCS_VALUE_TYPE_dvector:
             return {
-                {"x", value.value_dvector.x},
-                {"y", value.value_dvector.y},
-                {"z", value.value_dvector.z}
+                value.value_dvector.x, value.value_dvector.y,
+                value.value_dvector.z
             };
         case SCS_VALUE_TYPE_euler:
             return {
-                {"heading", value.value_euler.heading},
-                {"pitch", value.value_euler.pitch},
-                {"roll", value.value_euler.roll}
+                value.value_euler.heading, value.value_euler.pitch,
+                value.value_euler.roll
             };
         case SCS_VALUE_TYPE_fplacement:
             return {
-                {"x", value.value_fplacement.position.x},
-                {"y", value.value_fplacement.position.y},
-                {"z", value.value_fplacement.position.z},
-                {"heading", value.value_fplacement.orientation.heading},
-                {"pitch", value.value_fplacement.orientation.pitch},
-                {"roll", value.value_fplacement.orientation.roll}
+                value.value_fplacement.position.x,
+                value.value_fplacement.position.y,
+                value.value_fplacement.position.z,
+                value.value_fplacement.orientation.heading,
+                value.value_fplacement.orientation.pitch,
+                value.value_fplacement.orientation.roll
             };
         case SCS_VALUE_TYPE_dplacement:
             return {
-                {"x", value.value_dplacement.position.x},
-                {"y", value.value_dplacement.position.y},
-                {"z", value.value_dplacement.position.z},
-                {"heading", value.value_dplacement.orientation.heading},
-                {"pitch", value.value_dplacement.orientation.pitch},
-                {"roll", value.value_dplacement.orientation.roll}
+                value.value_dplacement.position.x,
+                value.value_dplacement.position.y,
+                value.value_dplacement.position.z,
+                value.value_dplacement.orientation.heading,
+                value.value_dplacement.orientation.pitch,
+                value.value_dplacement.orientation.roll
             };
         case SCS_VALUE_TYPE_string:
             return value.value_string.value;
@@ -110,18 +104,107 @@ nlohmann::json scs_value_to_json(const scs_value_t &value) {
     }
 }
 
-/// Converts an array of named attributes to a JSON structure.
-nlohmann::json scs_attributes_to_json(const scs_named_value_t *attributes) {
+NamedValue NamedValue::scalar(std::string name, nlohmann::json value) {
+    return NamedValue{std::move(name), SCS_U32_NIL, std::move(value)};
+}
+
+NamedValue NamedValue::event_id(const std::string &event_id) {
+    return NamedValue{"_", SCS_U32_NIL, event_id};
+}
+
+std::vector<NamedValue> copy_scs_attributes(
+    const scs_named_value_t *attributes
+) {
     if (!attributes) return {};
-    nlohmann::json json{};
+    std::vector<NamedValue> result;
     while (attributes->name) {
-        const auto value = scs_value_to_json(attributes->value);
-        auto key = std::string(attributes->name);
-        if (attributes->index != SCS_U32_NIL) {
-            key += "." + std::to_string(attributes->index);
-        }
-        json_assign_path(json, key, value);
+        result.emplace_back(
+            NamedValue{
+                attributes->name, attributes->index,
+                scs_value_to_json(attributes->value)
+            }
+        );
         ++attributes;
     }
-    return json;
+    return result;
+}
+
+nlohmann::json named_values_to_json(
+    const std::vector<NamedValue> &data, bool flatten
+) {
+
+    // Named values on the SCS telemetry API that represent arrays are sent
+    // itemwise. To convert this to a sane JSON format, we first need to group
+    // items by their corresponding array.
+    std::map<std::string, std::pair<bool, std::vector<nlohmann::json>>>
+        unflattened;
+    for (const auto &item : data) {
+        if (item.value.is_null()) continue;
+        auto [it, _] = unflattened.emplace(
+            item.name, std::pair<bool, std::vector<nlohmann::json>>()
+        );
+        auto &[is_array, items] = it->second;
+        is_array = item.index != SCS_U32_NIL;
+        const auto index = item.index != SCS_U32_NIL ? item.index : 0;
+        while (items.size() <= index)
+            items.emplace_back();
+        items[index] = item.value;
+    }
+
+    // Now build the JSON object.
+    nlohmann::json result;
+    for (const auto &[key, value] : unflattened) {
+        const auto &[is_array, items] = value;
+        auto json_value =
+            (is_array || items.empty()) ? nlohmann::json(items) : items[0];
+        json_assign_path(result, key, json_value, flatten);
+    }
+    return result;
+}
+
+nlohmann::json delta_encode(
+    const nlohmann::json &new_data, const nlohmann::json &previous_data
+) {
+    // Handle non-object types.
+    if (!new_data.is_object() || !previous_data.is_object()) {
+
+        // Return null if the data has not changed. The caller must interpret
+        // the null as a removal of the corresponding key.
+        if (new_data == previous_data) return nullptr;
+
+        return new_data;
+    }
+
+    // Both new_data and previous_data must now be objects. Handle new data
+    // first.
+    nlohmann::json result = {};
+    for (const auto &[key, new_value] : new_data.items()) {
+
+        // If this key does not exist in the previous object, copy the new value
+        // into the result if it is not trivial (null, empty object, or empty
+        // array). Otherwise, perform delta-encoding recursively.
+        const auto previous_value_it = previous_data.find(key);
+        nlohmann::json delta;
+        if (previous_value_it == previous_data.end()) {
+            delta = new_value;
+        } else {
+            delta = delta_encode(new_value, *previous_value_it);
+        }
+
+        // Insert the item only if it carries data (not null, an empty array,
+        // or an empty object).
+        if (!delta.empty()) {
+            result[key] = delta;
+        }
+    }
+
+    // Check for keys that exist in previous_data but not in new_data. Insert
+    // nulls for those to signal the removal.
+    for (const auto &[key, previous_value] : previous_data.items()) {
+        if (!new_data.count(key)) {
+            result[key] = nullptr;
+        }
+    }
+
+    return result;
 }

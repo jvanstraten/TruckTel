@@ -1,11 +1,10 @@
 #pragma once
 
 #include <mutex>
-
-#include <scssdk_value.h>
-
 #include <string>
 #include <vector>
+
+#include <scssdk_value.h>
 
 #include <scssdk_telemetry_event.h>
 
@@ -14,18 +13,13 @@
 /// Metadata for channels.
 struct ChannelMetadata {
     /// SCS API name for this channel.
-    std::string scs_name;
+    std::string name;
 
     /// SCS API index for this channel.
-    scs_u32_t scs_index;
+    scs_u32_t index;
 
     /// SCS API data type for this channel.
-    scs_value_type_t scs_type;
-
-    /// Corresponding JSON path from Funbit's ets2-telemetry-server for
-    /// compatibility mode. If a channel is not present there, this is
-    /// empty.
-    std::string funbit_name = "";
+    scs_value_type_t type;
 };
 
 /// Double-buffered recorder for channel data.
@@ -45,6 +39,21 @@ private:
     /// Whether the game is paused.
     bool paused = true;
 
+    /// The previous render time reported by the game.
+    int64_t prev_render_time = 0;
+
+    /// Whether prev_render_time is valid.
+    bool prev_render_time_valid = false;
+
+    /// The most recently computed game FPS.
+    float fps = 0.0f;
+
+    /// Game FPS with a low-pass filter applied.
+    float fps_filtered = 0.0f;
+
+    /// Whether fps and fps_filtered are currently valid.
+    bool fps_valid = false;
+
     /// The mutex that protects the front buffer and the index thereof. The
     /// back buffer is NOT protected, and must only be accessed by the SCS API
     /// side.
@@ -52,6 +61,8 @@ private:
 
     // Indices of pseudochannels.
     size_t idx_render_time;
+    size_t idx_fps;
+    size_t idx_fps_filtered;
     size_t idx_simulation_time;
     size_t idx_paused_simulation_time;
     size_t idx_paused;
@@ -85,19 +96,8 @@ public:
     /// Returns const access to the channel metadata structure.
     [[nodiscard]] const std::vector<ChannelMetadata> &channels() const;
 
-    /// Returns a copy of the most recent frame. The indices in the returned
-    /// array correspond to those returned by channels(), though the returned
-    /// array may be smaller than the array returned by channels(). Channels
-    /// that did not receive a value in the most recent frame will have their
-    /// type code set to SCS_VALUE_TYPE_INVALID and must be ignored by the
-    /// caller.
-    std::vector<scs_value_t> poll();
-
-    /// Generates JSON data of everything in the most recent frame.
-    nlohmann::json poll_json_scs();
-
-    /// Generates JSON data in roughly the format used by Funbit's telemetry
-    /// server. This doesn't include static config data yet, and some post-
-    /// conversions are necessary for compatibility.
-    nlohmann::json poll_json_funbit();
+    /// Updates the given vector such that it contains a copy of the most recent
+    /// frame. The indices in the vector correspond to those returned by
+    /// channels().
+    void poll(std::vector<scs_value_t> &data);
 };

@@ -1,36 +1,41 @@
 #pragma once
 
-#include <atomic>
 #include <memory>
 #include <thread>
 
+#include "config.h"
+
+// Opaque forward reference to the actual Server class. Prevents a million
+// headers from being loaded transitively by using this header.
+class Server;
+
 /// Class managing a worker thread to run the telemetry server in.
-class Server {
+class ServerThread {
+
+    /// The associated server instance.
+    std::unique_ptr<Server> server;
 
     /// Main function for the thread.
-    void main();
-
-    /// Shutdown flag for the thread.
-    std::atomic<bool> shutdown_requested = false;
+    void main(ServerConfig config) const;
 
     /// Thread handle.
     std::thread thread;
 
     /// Constructor. Starts the server thread.
-    Server();
+    explicit ServerThread(const ServerConfig &config);
 
 public:
     /// Destructor. Shuts down and joins with the server thread.
-    ~Server();
+    ~ServerThread();
 
 private:
     /// Instance of the logger, used by static methods.
-    static std::unique_ptr<Server> instance;
+    static std::unique_ptr<ServerThread> instance;
 
 public:
     /// Call from the SCS API telemetry initialization hook to start the
     /// telemetry server.
-    static void init();
+    static void init(const ServerConfig &config);
 
     /// Call from the SCS API telemetry shutdown hook to shut down the telemetry
     /// server.

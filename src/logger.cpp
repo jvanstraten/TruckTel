@@ -2,7 +2,6 @@
 
 #include <cstdarg>
 #include <cstdlib>
-#include <filesystem>
 
 void Logger::flush_queue_unlocked() {
     while (!game_log_queue.empty()) {
@@ -14,7 +13,9 @@ void Logger::flush_queue_unlocked() {
     }
 }
 
-void Logger::log(const scs_log_type_t severity, const std::string &message) {
+void Logger::log_raw(
+    const scs_log_type_t severity, const std::string &message
+) {
     std::lock_guard guard(mutex);
 
     if (game_log_callback) {
@@ -48,7 +49,9 @@ void Logger::log(const scs_log_type_t severity, const std::string &message) {
     }
 }
 
-void Logger::logf(const scs_log_type_t severity, const char *format, ...) {
+void Logger::log_formatted(
+    const scs_log_type_t severity, const char *format, ...
+) {
     va_list args1;
     va_start(args1, format);
     va_list args2;
@@ -62,33 +65,24 @@ void Logger::logf(const scs_log_type_t severity, const char *format, ...) {
     }
     vsnprintf(buf, size, format, args2);
     va_end(args2);
-    log(severity, buf);
+    log_raw(severity, buf);
     free(buf);
 }
 
 Logger::Logger(const scs_log_t game_log_callback)
     : game_log_callback(game_log_callback),
-      game_api_thread(std::this_thread::get_id()) {
-    // The working directory for ETS2 seems to be the directory its
-    // executable is placed in, so the path below points to a file
-    // in the plugin directory.
-    const auto log_path =
-        std::filesystem::current_path() / "plugins" / "trucktel.txt";
-
-    // For some ungodly reason, std::filesystem::path::c_str() emits UTF16
-    // on Windows. Avoid by converting to std::string first.
-    const auto log_path_str = log_path.string();
-
-    // Report where we're logging to for good measure.
-    logf(SCS_LOG_TYPE_message, "Logging to %s", log_path_str.c_str());
-    log_file.open(log_path_str.c_str());
-}
+      game_api_thread(std::this_thread::get_id()) {}
 
 std::unique_ptr<Logger> Logger::instance{};
 
 void Logger::init(const scs_log_t game_log_callback) {
     if (instance) throw std::runtime_error("can only have one logger at once");
     instance.reset(new Logger(game_log_callback));
+}
+
+void Logger::set_file(const std::string &path) {
+    info("Logging to %s", path.c_str());
+    instance->log_file.open(path.c_str());
 }
 
 void Logger::shutdown() {
