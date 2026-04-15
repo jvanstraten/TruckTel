@@ -32,7 +32,15 @@ HttpResponse HttpHandler::handle_static(const Url &url) const {
         (std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>()
     );
 
-    // TODO: derive content type from file extension
+    // Determine the content type.
+    auto filename = path.filename().string();
+    response.content_type = CONTENT_TYPE_UNKNOWN;
+    for (const auto &[regex, content_type] : content_types) {
+        if (std::regex_match(filename, regex)) {
+            response.content_type = content_type;
+            break;
+        }
+    }
 
     return response;
 }
@@ -80,9 +88,12 @@ HttpResponse HttpHandler::handle_error(
 }
 
 void HttpHandler::configure(
-    const std::filesystem::path &new_document_root, Database &new_database
+    const std::filesystem::path &new_document_root,
+    const std::vector<std::pair<std::regex, std::string>> &new_content_types,
+    Database &new_database
 ) {
     document_root = new_document_root;
+    content_types = new_content_types;
     database = &new_database;
 }
 

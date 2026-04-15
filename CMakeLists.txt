@@ -65,6 +65,7 @@ add_library(trucktel SHARED
         src/server/database.h
         src/server/database.cpp
         ${asio_SOURCE_DIR}/asio/src/asio.cpp
+        src/server/config.h
 )
 target_link_libraries(trucktel
         PRIVATE nlohmann_json::nlohmann_json

@@ -173,7 +173,6 @@ Recorder::Recorder(
         register_event_handler(event);
     }
 
-    // TODO make recorded channels configurable.
     // Register common channels.
     register_channel_handler(
         {SCS_TELEMETRY_CHANNEL_local_scale, SCS_U32_NIL, SCS_VALUE_TYPE_float}

@@ -4,17 +4,17 @@
 #include "recorder/recorder.h"
 #include "server.h"
 
-void ServerThread::main(std::string server_root) const {
+void ServerThread::main(ServerConfig config) const {
     try {
-        server->run(server_root, 8080);
+        server->run(config);
     } catch (std::exception &e) {
         Logger::error("fatal error in server: %s", e.what());
     }
 }
 
-ServerThread::ServerThread(const std::string &server_root)
+ServerThread::ServerThread(const ServerConfig &config)
     : server(std::make_unique<Server>()),
-      thread(&ServerThread::main, this, server_root) {}
+      thread(&ServerThread::main, this, config) {}
 
 ServerThread::~ServerThread() {
     server->shutdown();
@@ -23,10 +23,10 @@ ServerThread::~ServerThread() {
 
 std::unique_ptr<ServerThread> ServerThread::instance;
 
-void ServerThread::init(const std::string &server_root) {
+void ServerThread::init(const ServerConfig &config) {
     if (instance)
         throw std::runtime_error("can only have one telemetry server at once");
-    instance.reset(new ServerThread(server_root));
+    instance.reset(new ServerThread(config));
     Logger::info("Note: log messages from the server thread may not");
     Logger::info("show up in the game log immediately while in the");
     Logger::info("main menu. Track the plugin log file if necessary!");

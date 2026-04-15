@@ -14,7 +14,6 @@
 class Recorder {
 private:
     /// Maximum number of wheels for a truck or trailer queried.
-    ///  TODO: remove when the channels are made configurable.
     static constexpr uint32_t MAX_WHEELS = 14;
 
     /// Initialization parameters passed to the plugin initialization function

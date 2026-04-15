@@ -63,14 +63,13 @@ void Server::on_shutdown() {
     }
 }
 
-void Server::run(
-    const std::filesystem::path &document_root, const uint16_t port
-) {
+void Server::run(const ServerConfig &config) {
     // Configure the HTTP handler.
-    http_handler.configure(document_root, database);
+    http_handler.configure(
+        config.document_root, config.content_types, database
+    );
 
     // Set up masks for logging.
-    // TODO: make configurable
     endpoint.clear_access_channels(wspp::alevel::all);
     endpoint.set_access_channels(wspp::alevel::access_core);
     endpoint.set_access_channels(wspp::alevel::app);
@@ -98,8 +97,7 @@ void Server::run(
     endpoint.set_reuse_addr(true);
 
     // Start listening.
-    // TODO: make configurable
-    endpoint.listen(port);
+    endpoint.listen(config.port);
     endpoint.start_accept();
 
     // Set the initial timer to start telemetry

@@ -4,6 +4,7 @@
 #include <filesystem>
 #include <set>
 
+#include "config.h"
 #include "database.h"
 #include "http.h"
 #include "wspp_config.h"
@@ -60,7 +61,7 @@ private:
 public:
     /// Starts the server. Call from a worker thread; this will not return until
     /// the server has shut down.
-    void run(const std::filesystem::path &document_root, uint16_t port);
+    void run(const ServerConfig &config);
 
     /// Call from any thread to tell the server to stop accepting connections
     /// and close all open connections.

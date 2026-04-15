@@ -1,6 +1,7 @@
 #pragma once
 
 #include <filesystem>
+#include <regex>
 #include <stdexcept>
 #include <string>
 
@@ -14,13 +15,16 @@ static constexpr auto CONTENT_TYPE_HTML = "text/html; charset=utf-8";
 /// MIME type for JSON results.
 static constexpr auto CONTENT_TYPE_JSON = "application/json; charset=utf-8";
 
+/// Default MIME type when no content-type regex matches.
+static constexpr auto CONTENT_TYPE_UNKNOWN = "application/octet-stream";
+
 /// A complete HTTP response, insofar as we support HTTP.
 struct HttpResponse {
     /// Response code.
     wspp::http::status_code::value code = wspp::http::status_code::ok;
 
     /// Content type.
-    const char *content_type = CONTENT_TYPE_HTML;
+    std::string content_type = CONTENT_TYPE_HTML;
 
     /// Response body.
     std::string body;
@@ -40,6 +44,9 @@ private:
 
     /// Document root for serving static files.
     std::filesystem::path document_root;
+
+    /// Filename regex to content-type mapping.
+    std::vector<std::pair<std::regex, std::string>> content_types;
 
     /// Database to serve REST values from.
     Database *database = nullptr;
@@ -63,7 +70,10 @@ private:
 public:
     /// Configures the server.
     void configure(
-        const std::filesystem::path &new_document_root, Database &new_database
+        const std::filesystem::path &new_document_root,
+        const std::vector<std::pair<std::regex, std::string>>
+            &new_content_types,
+        Database &new_database
     );
 
     /// Main function for handling an HTTP request.
