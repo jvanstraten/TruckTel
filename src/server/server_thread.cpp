@@ -4,7 +4,7 @@
 #include "recorder/recorder.h"
 #include "server.h"
 
-void ServerThread::main(ServerConfig config) const {
+void ServerThread::main(Configuration config) const {
     try {
         server->run(config);
     } catch (std::exception &e) {
@@ -12,7 +12,7 @@ void ServerThread::main(ServerConfig config) const {
     }
 }
 
-ServerThread::ServerThread(const ServerConfig &config)
+ServerThread::ServerThread(const Configuration &config)
     : server(std::make_unique<Server>()),
       thread(&ServerThread::main, this, config) {}
 
@@ -23,7 +23,7 @@ ServerThread::~ServerThread() {
 
 std::unique_ptr<ServerThread> ServerThread::instance;
 
-void ServerThread::init(const ServerConfig &config) {
+void ServerThread::init(const Configuration &config) {
     if (instance)
         throw std::runtime_error("can only have one telemetry server at once");
     instance.reset(new ServerThread(config));

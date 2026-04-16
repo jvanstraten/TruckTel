@@ -171,3 +171,13 @@ static constexpr auto API_EVENT_STARTED = "game.started";
 
 /// Event generated when the game is paused. No attributes.
 static constexpr auto API_EVENT_PAUSED = "game.paused";
+
+//==============================================================================
+// Misc
+//==============================================================================
+
+/// Key used to resolve structural conflicts.
+static constexpr auto API_CONFLICT_KEY = "_";
+
+/// Key used to store event IDs.
+static constexpr auto API_EVENT_ID_KEY = "_";

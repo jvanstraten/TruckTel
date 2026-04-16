@@ -103,7 +103,7 @@ same namespace. This relies on there not being conflicts between configuration
 and channel data. Some configuration attribute names are modified by TruckTel
 to avoid this. These are indicated with an asterisk in the tables below. This
 is not automated; if SCS adds attributes and these conflict with a channel,
-then the channel takes precedence..
+then the channel takes precedence.
 
 All of this results in a flat key-value data structure, where the keys have
 period separators. But you might also want to think about this in a more
@@ -114,6 +114,130 @@ a value for both `x` and `x.y`, for example `truck.adblue` and
 a value and a nested object. Whenever this happens, TruckTel will "replace"
 the `x` key with `x._` to make the nesting work. Both this and the flat view
 have benefits and drawbacks, so the API supports both forms.
+
+### Custom structures
+
+Don't like either of the flattened or structured formats? Me neither. Define
+your own! You can specify these custom structures in the `custom_structures`
+key in TruckTel's `config.yaml` file.
+
+`custom-structures` must point to an object. The keys of this object are what
+you pass to the `<structure>` path element of the server endpoints (defined
+in the server endpoint section below). The value can be any pile of nested
+objects or arrays you like, and defines the resulting structure of the JSON
+object, except instead of the values you want to see, you define yet another
+object that defines where TruckTel should take the data from.
+
+Suppose you want horizontal coordinates in whole meters, heading in whole
+degrees, and the in-game time for some reason represented as a date. You can
+then write in `config.yaml`:
+
+```yaml
+custom-structures:
+  gps:
+    coord:
+      x:
+        key: truck.world.placement.0
+        operator: round
+      y:
+        key: truck.world.placement.1
+        operator: round
+      z:
+        key: truck.world.placement.2
+        operator: round
+    heading:
+      key: truck.world.placement.3
+      scale: 360
+      operator: round
+    time:
+      key: game.time
+      operator: date
+```
+
+and then request e.g. `http://<server>:<port>/api/ws/delta/gps?throttle=0` to
+get structures that look like this:
+
+```json
+{
+  "coord": {
+    "x": -20328,
+    "y": 27,
+    "z": -6461
+  },
+  "heading": 192,
+  "time": "0001-01-01T15:16:00Z"
+}
+```
+
+This will only take as much bandwidth as it needs to, especially with
+delta-coding applied to rounded values; even at standstill, the game engine
+is very noisy.
+
+Note that the internal conversion process isn't particularly well-optimized.
+TruckTel does all the things it would do for the `struct` query, which is
+already a bit janky, and then builds an entirely new structure from that by
+interpreting your custom configuration structure. That said, this is still
+C++. My gut feeling is that it'll be faster than dealing with the full JSON
+struct with everything in it in a scripted language on a phone, or than
+opening a bunch of websockets to filter data that way.
+
+As stated, the resulting structure can be any hierarchy of objects and arrays.
+Structural objects are disambiguated from format specification objects by
+checking if any of the elements of the object are arrays or objects.
+
+If a format specification object is valid, it will be replaced with the data
+it resolved. If the referenced data does not exist, the replacement value will
+be null. If the format specification object is itself invalid, the replacement
+value will be a string with the error message.
+
+Format specification objects must have either a `static` or a `key` key. If
+`static` is specified, its value will be the replacement value. This is only
+ever going to be useful for mimicking other people's plugins; normally you'd
+specify `key`. `key` must then be a period-separated string that internally
+(hierarchically) indexes into the default structural data format.
+
+Unless otherwise specified, the resolution will prefer single values over
+structures of "child" values. For example, if you ask for `truck.oil.pressure`,
+you get just the oil pressure. You can override this by adding `struct: true`
+to the format specification object, in which case you'll get for instance:
+
+```json
+{
+  "_": 0.0,
+  "warning": {
+    "_": true,
+    "threshold": 10.149999618530273
+  }
+}
+```
+
+You can also let TruckTel do some post-processing on the selected data. This
+could be used to mimic the data formats presented by competing plugins, or to
+reduce traffic in delta-coded websocket connections. The following
+post-processing operations are currently defined, and are applied in the
+listed order if multiple are present.
+
+ - `offset: <desired offset>`: offsets a number by the given number. Mostly
+   there to facilitate number range checks via `offset`, `scale`, and `zero`.
+ - `scale: <desired scale factor>`: scales a number by the given number. This
+   could be used, for instance, to convert m/s to km/h, rotations to degrees,
+   or fractions to percentages. Scaling is applied before operators, in case
+   both are specified.
+ - `operator: round`: rounds to the nearest integer for numeric values. Useful
+   to avoid update spam for values that change only marginally due to noise.
+ - `operator: bool`: returns a reasonable boolean representation of the value:
+    - objects, arrays, strings: returns non-empty.
+    - numbers: returns whether the number *rounds to* nonzero. Use scaling and
+      offsetting to shift the margins for which numbers you want to be treated
+      as zero.
+    - null: left as null.
+ - `operator: zero`: returns the complement of `bool`.
+ - `operator: date`: a cursed operator that converts a game time in minutes to
+   an ISO 8601 date, starting from `0001-01-01T00:00:00Z`. This exists for
+   compatibility with some plugins that like to do this. Maybe the game also
+   starts counting at year 1? I don't know.
+
+It might be argued that I went a little overboard with these functions.
 
 ### (Gameplay) events
 

@@ -155,6 +155,10 @@ nlohmann::json Database::get_data_multi(
     return result;
 }
 
+void Database::set_custom_structures(nlohmann::json new_custom_structures) {
+    custom_structures = std::move(new_custom_structures);
+}
+
 nlohmann::json Database::get_data(const std::vector<std::string> &query) const {
     // The first element of the query specifies the structuring of the data.
     if (query.empty()) return "missing structure";
@@ -177,6 +181,15 @@ nlohmann::json Database::get_data(const std::vector<std::string> &query) const {
     }
     if (structure == API_STRUCTURE_FLAT) {
         return get_data_multi(prefix.str(), true);
+    }
+    if (custom_structures.is_object()) {
+        const auto it = custom_structures.find(structure);
+        if (it != custom_structures.end()) {
+            auto custom_structure = *it;
+            const auto data = get_data_multi(prefix.str(), false);
+            json_restructure(custom_structure, data);
+            return custom_structure;
+        }
     }
     return "unrecognized method " + structure;
 }

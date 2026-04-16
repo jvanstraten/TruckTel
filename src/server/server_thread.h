@@ -3,7 +3,7 @@
 #include <memory>
 #include <thread>
 
-#include "config.h"
+#include "../config.h"
 
 // Opaque forward reference to the actual Server class. Prevents a million
 // headers from being loaded transitively by using this header.
@@ -16,13 +16,13 @@ class ServerThread {
     std::unique_ptr<Server> server;
 
     /// Main function for the thread.
-    void main(ServerConfig config) const;
+    void main(Configuration config) const;
 
     /// Thread handle.
     std::thread thread;
 
     /// Constructor. Starts the server thread.
-    explicit ServerThread(const ServerConfig &config);
+    explicit ServerThread(const Configuration &config);
 
 public:
     /// Destructor. Shuts down and joins with the server thread.
@@ -35,7 +35,7 @@ private:
 public:
     /// Call from the SCS API telemetry initialization hook to start the
     /// telemetry server.
-    static void init(const ServerConfig &config);
+    static void init(const Configuration &config);
 
     /// Call from the SCS API telemetry shutdown hook to shut down the telemetry
     /// server.

@@ -73,11 +73,14 @@ void Server::on_shutdown() {
     Logger::info("on_shutdown() complete");
 }
 
-void Server::run(const ServerConfig &config) {
+void Server::run(const Configuration &config) {
     // Configure the HTTP handler.
     http_handler.configure(
         config.document_root, config.content_types, database
     );
+
+    // Configure custom data structures.
+    database.set_custom_structures(config.custom_structures);
 
     // Set up masks for logging.
     endpoint.clear_access_channels(wspp::alevel::all);

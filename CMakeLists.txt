@@ -41,6 +41,8 @@ endif()
 # within the directory that contains the game binary.
 add_library(trucktel SHARED
         src/trucktel.cpp
+        src/config.h
+        src/config.cpp
         src/api.h
         src/logger.cpp
         src/logger.h
@@ -56,7 +58,6 @@ add_library(trucktel SHARED
         src/recorder/recorder.cpp
         src/server/server_thread.h
         src/server/server_thread.cpp
-        src/server/config.h
         src/server/wspp_config.h
         src/server/server.h
         src/server/server.cpp

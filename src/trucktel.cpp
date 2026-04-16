@@ -1,85 +1,11 @@
-#include <array>
-#include <cstdio>
-#include <cstdlib>
 #include <filesystem>
-#include <fstream>
-#include <list>
-#include <memory>
-#include <mutex>
-#include <vector>
 
 #include "scssdk_telemetry.h"
 
-#include "fkYAML/node.hpp"
-#include "nlohmann/json.hpp"
-
+#include "config.h"
 #include "logger.h"
 #include "recorder/recorder.h"
 #include "server/server_thread.h"
-
-/// Tries to load the configuration file. If the file does not exist, a default
-/// file is written.
-static ServerConfig load_config_file(const std::filesystem::path &path) {
-    // Generate a default configuration file if no configuration file exists
-    // yet.
-    if (!std::filesystem::exists(path)) {
-        std::ofstream ofs;
-        ofs.open(path.string().c_str());
-        ofs << "---" << std::endl;
-        ofs << "# Which port the server should listen on." << std::endl;
-        ofs << "port: 8080" << std::endl;
-        ofs << "" << std::endl;
-        ofs << "# Which content types the static server should use. 'if' is a "
-               "regex that's"
-            << std::endl;
-        ofs << "# matched against the filename; if it matches, the content "
-               "type in 'then'"
-            << std::endl;
-        ofs << "# is sent." << std::endl;
-        ofs << "content-types:" << std::endl;
-        ofs << "  - if: .*\\.html?" << std::endl;
-        ofs << "    then: text/html; charset=utf-8" << std::endl;
-        ofs << "  - if: .*\\.json" << std::endl;
-        ofs << "    then: application/json; charset=utf-8" << std::endl;
-        ofs << "  - if: .*\\.js" << std::endl;
-        ofs << "    then: text/javascript; charset=utf-8" << std::endl;
-        ofs << "  - if: .*\\.css" << std::endl;
-        ofs << "    then: text/css; charset=utf-8" << std::endl;
-        ofs << "  - if: .*\\.svg" << std::endl;
-        ofs << "    then: image/svg+xml; charset=utf-8" << std::endl;
-        ofs << "  - if: .*\\.png" << std::endl;
-        ofs << "    then: image/png" << std::endl;
-        ofs << "  - if: .*\\.jpe?g" << std::endl;
-        ofs << "    then: image/jpeg" << std::endl;
-        ofs << "  - if: .*\\.gif" << std::endl;
-        ofs << "    then: image/gif" << std::endl;
-        ofs << "  - if: .*\\.ico" << std::endl;
-        ofs << "    then: image/vnd.microsoft.icon" << std::endl;
-        ofs.close();
-    }
-
-    // Load the configuration file.
-    std::ifstream ifs;
-    ifs.open(path.string().c_str());
-    if (!ifs.is_open()) {
-        throw std::runtime_error("failed to load default configuration file");
-    }
-    try {
-        auto yaml = fkyaml::node::deserialize(ifs);
-        ServerConfig server_config = {};
-        server_config.port = yaml["port"].get_value<int>();
-        for (const auto &ob : yaml["content-types"]) {
-            auto regex = std::regex(ob["if"].get_value<std::string>());
-            auto content_type = ob["then"].get_value<std::string>();
-            server_config.content_types.emplace_back(regex, content_type);
-        }
-        return server_config;
-    } catch (std::exception &e) {
-        throw std::runtime_error(
-            "failed to parse configuration file: " + std::string(e.what())
-        );
-    }
-}
 
 /// Main initialization function.
 static void initialize(
@@ -123,7 +49,7 @@ static void initialize(
     Logger::set_file((trucktel_path / "log.txt").string());
 
     // Load the configuration file.
-    ServerConfig server_config =
+    Configuration server_config =
         load_config_file(trucktel_path / "config.yaml");
 
     // Initialize the data recording logic.

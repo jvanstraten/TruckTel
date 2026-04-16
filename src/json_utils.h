@@ -1,7 +1,10 @@
 #pragma once
 
+#include <string>
+
 #include <scssdk_value.h>
 
+#include <fkYAML/node.hpp>
 #include <nlohmann/json.hpp>
 
 /// Assigns data to the hierarchical key identified by path in json. The
@@ -17,6 +20,13 @@ void json_assign_path(
     const std::string &path,
     const nlohmann::json &data,
     bool flatten
+);
+
+/// Resolves a period-separated path in the given structured data. This is more
+/// or less the complement of the non-flattened form of json_assign_path(),
+/// though it also supports arrays.
+nlohmann::json json_resolve_path(
+    const nlohmann::json &data, const std::string &path
 );
 
 /// Converts an SCS version number to a JSON array.
@@ -62,6 +72,18 @@ nlohmann::json named_values_to_json(
 ///    omitted;
 ///  - object items that exist in previous_data but not in new_data are returned
 ///    mapping to null.
-nlohmann::json delta_encode(
+nlohmann::json json_delta_encode(
     const nlohmann::json &new_data, const nlohmann::json &previous_data
 );
+
+/// Reformats a given JSON object. The format JSON is passed to output initially
+/// and dictates the structure of the returned JSON. It is expected to be a
+/// nested structure (objects and arrays) of objects containing only scalar
+/// values. Said objects describe how data must be taken from the data array and
+/// processed. The function then replaces the format object with the result of
+/// said processing, so the format JSON object will hold the result of the
+/// function after the call.
+void json_restructure(nlohmann::json &format, const nlohmann::json &data);
+
+/// Converts fkYAML to nlohmann::JSON.
+nlohmann::json yaml_to_json(const fkyaml::node &yaml);

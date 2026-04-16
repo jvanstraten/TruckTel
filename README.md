@@ -2,7 +2,6 @@
 
 TODO:
 
- - Finish API doc grunt work
  - Release actions
 
 # TruckTel: telemetry plugin for ETS2 and ATS

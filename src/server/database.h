@@ -62,6 +62,9 @@ private:
     /// Version of the configuration data.
     uint64_t configuration_version = 0;
 
+    /// Custom data structures configured by the user.
+    nlohmann::json custom_structures;
+
     /// Builds JSON for a scalar based on its indix.
     [[nodiscard]] nlohmann::json get_json_for(
         const ValueIndex &value_index
@@ -115,6 +118,9 @@ public:
     [[nodiscard]] nlohmann::json get_data_multi(
         const std::string &prefix, bool flatten
     ) const;
+
+    /// Configures custom data structures.
+    void set_custom_structures(nlohmann::json new_custom_structures);
 
     /// Returns data for the given API query.
     [[nodiscard]] nlohmann::json get_data(

@@ -50,7 +50,7 @@ void WebSocket::update_internal(const bool first) {
     }
 
     // Perform delta encoding.
-    const auto delta = delta_encode(new_data, previous_data);
+    const auto delta = json_delta_encode(new_data, previous_data);
     previous_data = new_data;
 
     // Send the delta-coded data if it's nontrivial.
