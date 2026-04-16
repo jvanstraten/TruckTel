@@ -1,9 +1,3 @@
-# WORK IN PROGRESS, STILL
-
-TODO:
-
- - Release actions
-
 # TruckTel: telemetry plugin for ETS2 and ATS
 
 ## What?
