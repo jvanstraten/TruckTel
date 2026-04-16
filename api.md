@@ -100,8 +100,10 @@ different ways:
 
 TruckTel presents all data sources to its web API in the same way and in the
 same namespace. This relies on there not being conflicts between configuration
-and channel data; there don't seem to be any, but if there ever are, channels
-take precedence.
+and channel data. Some configuration attribute names are modified by TruckTel
+to avoid this. These are indicated with an asterisk in the tables below. This
+is not automated; if SCS adds attributes and these conflict with a channel,
+then the channel takes precedence..
 
 All of this results in a flat key-value data structure, where the keys have
 period separators. But you might also want to think about this in a more
@@ -276,10 +278,10 @@ Notation:
  - Trailers are sort of but not really an array in the game; I don't know the
    dev history of the game, but it seems like the notion of multiple trailers
    is an afterthought. You can get information about the trailers via
-   `trailer.<key>`, or via `trailer.<index>.<key>`, where `index` is a number
-   from 0 to 9. This is represented in the tables below as simply
-   `trailer#.<key>`. Note that these numbers are stored as JSON object key
-   strings in the structured format, NOT as array indices.
+   `trailer.<index>.<key>`, where `index` is a number from 0 to 9. This is
+   represented in the tables below as simply `trailer.#.<key>`. Note that these
+   numbers are stored as JSON object key strings in the structured format, NOT
+   as array indices.
 
 #### Game identification
 
@@ -293,21 +295,28 @@ Notation:
 
 #### Controls
 
-| Key                             | Type   | Description                                                      |
-|---------------------------------|--------|------------------------------------------------------------------|
-| `controls.shifter.type`         | string | Either `arcade`, `automatic`, `manual`, or `hshifter`.           |
-| `hshifter.selector.count`       | u32    | Number of selectors (e.g. range/splitter toggles).               |
-| `hshifter.slot.gear`            | s32[]  | Gear selected when requirements for this h-shifter slot are met. |
-| `hshifter.slot.handle.position` | u32[]  | Position of h-shifter handle.                                    |
-| `hshifter.slot.selectors`       | u32[]  | Bitmask of required on/off state of selectors.                   |
-| `truck.input.brake`             | float  |                                                                  |
-| `truck.input.clutch`            | float  |                                                                  |
-| `truck.input.steering`          | float  |                                                                  |
-| `truck.input.throttle`          | float  |                                                                  |
-| `truck.effective.brake`         | float  |                                                                  |
-| `truck.effective.clutch`        | float  |                                                                  |
-| `truck.effective.steering`      | float  |                                                                  |
-| `truck.effective.throttle`      | float  |                                                                  |
+| Key                             | Type   | Description                                                                                                                                                                                        |
+|---------------------------------|--------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `truck.input.steering`          | float  | Steering received from input <-1;1>, counter-clockwise.                                                                                                                                            |
+| `truck.effective.steering`      | float  | Steering as used by the simulation <-1;1>, counter-clockwise. Accounts for interpolation speeds and simulated counterforces for digital inputs.                                                    |
+| `truck.input.throttle`          | float  | Throttle received from input <0;1>.                                                                                                                                                                |
+| `truck.effective.throttle`      | float  | Throttle pedal input as used by the simulation <0;1>. Accounts for the press attack curve for digital inputs or cruise-control input.                                                              |
+| `truck.input.brake`             | float  | Brake received from input <0;1>.                                                                                                                                                                   |
+| `truck.effective.brake`         | float  | Brake pedal input as used by the simulation <0;1>. Accounts for the press attack curve for digital inputs. Does not contain retarder, parking or engine brake.                                     |
+| `truck.brake.motor`             | bool   | Whether engine braking is enabled.                                                                                                                                                                 |
+| `truck.brake.parking`           | bool   | Whether the parking brake is set.                                                                                                                                                                  |
+| `truck.brake.retarder`          | u32    | Current level of the retarder. 0 is disabled, maximum is specified by `truck.retarder.steps`.                                                                                                      |
+| `truck.retarder.steps`          | u32    | Number of steps in the retarder. Set to zero if retarder is not mounted to the truck.                                                                                                              |
+| `controls.shifter.type`         | string | Either `arcade`, `automatic`, `manual`, or `hshifter`.                                                                                                                                             |
+| `hshifter.selector.count`       | u32    | Number of selectors (e.g. range/splitter toggles).                                                                                                                                                 |
+| `hshifter.slot.handle.position` | u32[]  | Position of h-shifter handle.                                                                                                                                                                      |
+| `hshifter.slot.selectors`       | u32[]  | Bitmask of required on/off state of selectors.                                                                                                                                                     |
+| `hshifter.slot.gear`            | s32[]  | Gear selected when requirements for this h-shifter slot (corresponding handle position and selectors) are met. The first matching slot dictates the gear. If no gear is found, neutral is assumed. |
+| `truck.hshifter.select`         | u32[]  | Enabled state of range/splitter selector toggles. Mapping between the range/splitter functionality and selector index is described by HSHIFTER configuration.                                      |
+| `truck.hshifter.slot`           | u32    | Gearbox slot the h-shifter handle is currently in. 0 means that no slot is selected.                                                                                                               |
+| `truck.input.clutch`            | float  | Clutch received from input <0;1>.                                                                                                                                                                  |
+| `truck.effective.clutch`        | float  | Clutch pedal input as used by the simulation <0;1>. Accounts for the automatic shifting or interpolation of player input.                                                                          |
+| `truck.differential_lock`       | bool   | Whether the differential lock is enabled.                                                                                                                                                          |
 
 #### Game performance
 
@@ -331,174 +340,171 @@ Notation:
 
 #### Job information
 
-| Key                                   | Type | Description |
-|---------------------------------------|------|-------------|
-| `job.cargo`                           |      |             |
-| `job.cargo.id`                        |      |             |
-| `job.cargo.damage`                    |      |             |
-| `job.cargo.loaded`                    |      |             |
-| `job.cargo.mass`                      |      |             |
-| `job.cargo.unit.count`                |      |             |
-| `job.cargo.unit.mass`                 |      |             |
-| `job.[source/destination].city`       |      |             |
-| `job.[source/destination].city.id`    |      |             |
-| `job.[source/destination].company`    |      |             |
-| `job.[source/destination].company.id` |      |             |
-| `job.delivery.time`                   |      |             |
-| `job.income`                          |      |             |
-| `job.is.special.job`                  |      |             |
-| `job.job.market`                      |      |             |
-| `job.planned_distance.km`             |      |             |
+| Key                                   | Type   | Description                                                                                                                        |
+|---------------------------------------|--------|------------------------------------------------------------------------------------------------------------------------------------|
+| `job.cargo`                           | string | Name of the cargo for display purposes.                                                                                            |
+| `job.cargo.id`                        | string | ID of the cargo for internal use by code.                                                                                          |
+| `job.cargo.damage`                    | float  | The total damage of the cargo in range 0.0 to 1.0.                                                                                 |
+| `job.cargo.loaded`                    | bool   | Whether the cargo is loaded on the trailer. For non-cargo market this is always true.                                              |
+| `job.cargo.mass`                      | float  | Mass of the cargo in kilograms.                                                                                                    |
+| `job.cargo.unit.count`                | u32    | How many units of the cargo the job consist of.                                                                                    |
+| `job.cargo.unit.mass`                 | float  | Mass of the single unit of the cargo in kilograms.                                                                                 |
+| `job.[source/destination].city`       | string | Name of the destination city for display purposes.                                                                                 |
+| `job.[source/destination].city.id`    | string | ID of the source/destination city for internal use by code.                                                                        |
+| `job.[source/destination].company`    | string | Name of the destination company for display purposes.                                                                              |
+| `job.[source/destination].company.id` | string | ID of the destination company for internal use by code.                                                                            |
+| `job.delivery.time`                   | u32    | Absolute in-game time in minutes of end of job delivery window.                                                                    |
+| `job.income`                          | u64    | Reward in internal game-specific currency.                                                                                         |
+| `job.job.market`                      | string | The job market this job is from. One of `cargo_market`, `quick_job`, `freight_market`, `external_contracts`, or `external_market`. |
+| `job.is.special.job`                  | bool   | Flag indicating that the job is special transport job.                                                                             |
+| `job.planned_distance.km`             | u32    | Planned job distance in simulated kilometers. Does not include ferry distance.                                                     |
 
 #### Truck and trailer identification
 
-| Key                                         | Type | Description |
-|---------------------------------------------|------|-------------|
-| `truck.name`                                |      |             |
-| `[truck/trailer#].id`                       |      |             |
-| `truck.brand`                               |      |             |
-| `truck.brand_id`                            |      |             |
-| `[truck/trailer#].license.plate`            |      |             |
-| `[truck/trailer#].license.plate.country`    |      |             |
-| `[truck/trailer#].license.plate.country.id` |      |             |
-| `trailer#.body.type`                        |      |             |
-| `trailer#.cargo.accessory.id`               |      |             |
-| `trailer#.chain.type`                       |      |             |
+| Key                                          | Type   | Description                                                                               |
+|----------------------------------------------|--------|-------------------------------------------------------------------------------------------|
+| `truck.name`                                 | string | Localized name of the truck.                                                              |
+| `trailer.0.body.type`                        | string | Localized name of the trailer body type. Only reported for the first trailer.             |
+| `trailer.0.chain.type`                       | string | Name of trailer chain type for internal use by code. Only reported for the first trailer. |
+| `[truck/trailer.#].id`                       | string | ID of the truck or trailer for internal use by code.                                      |
+| `[truck/trailer.#].brand`                    | string | Localized brand of the truck or trailer.                                                  |
+| `[truck/trailer.#].brand_id`                 | string | ID of the truck or trailer brand for internal use by code.                                |
+| `[truck/trailer.#].license.plate`            | string | License plate of the truck or trailer.                                                    |
+| `[truck/trailer.#].license.plate.country`    | string | Localized name of the country in which the truck or trailer is registered.                |
+| `[truck/trailer.#].license.plate.country.id` | string | ID of the country in which the truck or trailer is registered for internal use by code.   |
+| `trailer.#.cargo.accessory.id`               | string | Name of cargo accessory for internal use by code.                                         |
 
 #### Positioning
 
-| Key                                | Type | Description |
-|------------------------------------|------|-------------|
-| `[truck/trailer#].world.placement` |      |             |
-| `truck.cabin.acceleration.angular` |      |             |
-| `truck.cabin.offset`               |      |             |
-| `truck.cabin.position`             |      |             |
-| `truck.cabin.velocity.angular`     |      |             |
-| `truck.head.offset`                |      |             |
-| `truck.head.position`              |      |             |
-| `truck.local.acceleration.angular` |      |             |
-| `truck.local.acceleration.linear`  |      |             |
-| `truck.local.velocity.angular`     |      |             |
-| `truck.local.velocity.linear`      |      |             |
-| `[truck/trailer#].hook.position`   |      |             |
-| `trailer#.acceleration.angular`    |      |             |
-| `trailer#.acceleration.linear`     |      |             |
-| `trailer#.velocity.angular`        |      |             |
-| `trailer#.velocity.linear`         |      |             |
-| `trailer#.connected`               |      |             |
+| Key                                            | Type       | Description                                                                                               |
+|------------------------------------------------|------------|-----------------------------------------------------------------------------------------------------------|
+| `[truck/trailer.#].world.placement`            | dplacement | Represents world space position and orientation of the truck or trailer.                                  |
+| `[truck.local/trailer.#].velocity.linear`      | fvector    | Represents vehicle space linear velocity of the truck or trailer measured in meters per second.           |
+| `[truck.local/trailer.#].velocity.angular`     | fvector    | Represents vehicle space angular velocity of the truck or trailer measured in rotations per second.       |
+| `[truck.local/trailer.#].acceleration.linear`  | fvector    | Represents vehicle space linear acceleration of the truck or trailer measured in meters per second^2.     |
+| `[truck.local/trailer.#].acceleration.angular` | fvector    | Represents vehicle space angular acceleration of the truck or trailer measured in rotations per second^2. |
+| `[truck/trailer.#].hook.position`              | fvector    | Represents the position of the trailer connection hook in vehicle space.                                  |
+| `trailer.#.connected`                          | bool       | Whether the (indexed) trailer is connected to the truck or the preceding trailer.                         |
+| `truck.cabin.position`                         | fvector    | Represents the default position of the cabin in the vehicle space, around which the cabin rotates.        |
+| `truck.cabin.offset`                           | fplacement | Represents vehicle space position and orientation delta of the cabin from its default position.           |
+| `truck.cabin.velocity.angular`                 | fvector    | Represents cabin space angular velocity of the cabin measured in rotations per second.                    |
+| `truck.cabin.acceleration.angular`             | fvector    | Represents cabin space angular acceleration of the cabin measured in rotations per second^2.              |
+| `truck.head.position`                          | fvector    | Represents the default position of the head in the cabin space.                                           |
+| `truck.head.offset`                            | fplacement | Represents a cabin space position and orientation delta of the driver head from its default position.     |
+
+Note the inconsistency that the `.local` path element for velocity and
+acceleration is present for trucks but not for trailers; that's SCS's
+derp.
 
 #### Powertrain-related
 
-| Key                        | Type | Description |
-|----------------------------|------|-------------|
-| `truck.electric.enabled`   |      |             |
-| `truck.engine.enabled`     |      |             |
-| `truck.engine.gear`        |      |             |
-| `truck.engine.rpm`         |      |             |
-| `truck.rpm.limit`          |      |             |
-| `truck.displayed.gear`     |      |             |
-| `truck.gears.forward`      |      |             |
-| `truck.forward.ratio`      |      |             |
-| `truck.gears.reverse`      |      |             |
-| `truck.reverse.ratio`      |      |             |
-| `truck.differential.ratio` |      |             |
-| `truck.differential_lock`  |      |             |
-| `truck.speed`              |      |             |
-
-#### Brakes
-
-| Key                                  | Type | Description |
-|--------------------------------------|------|-------------|
-| `truck.brake.air.pressure`           |      |             |
-| `truck.brake.air.pressure.emergency` |      |             |
-| `truck.brake.air.pressure.warning`   |      |             |
-| `truck.brake.motor`                  |      |             |
-| `truck.brake.parking`                |      |             |
-| `truck.brake.retarder`               |      |             |
-| `truck.retarder.steps`               |      |             |
-| `truck.brake.temperature`            |      |             |
+| Key                        | Type    | Description                                                                                |
+|----------------------------|---------|--------------------------------------------------------------------------------------------|
+| `truck.electric.enabled`   | bool    | Whether electronics are enabled.                                                           |
+| `truck.engine.enabled`     | bool    | Whether the engine is enabled.                                                             |
+| `truck.engine.rpm`         | float   | RPM of the engine.                                                                         |
+| `truck.rpm.limit`          | float   | Maximum engine RPM.                                                                        |
+| `truck.engine.gear`        | s32     | Gear currently selected in the engine/gearbox. >0 = drive, 0 = neutral, <0 = reverse.      |
+| `truck.displayed.gear`     | s32     | Gear currently displayed on the dashboard. >0 = drive, 0 = neutral, <0 = reverse.          |
+| `truck.gears.forward`      | u32     | Number of forward gears on an undamaged truck.                                             |
+| `truck.forward.ratio`      | float[] | Forward transmission ratios.                                                               |
+| `truck.gears.reverse`      | u32     | Number of reverse gears on an undamaged truck.                                             |
+| `truck.reverse.ratio`      | float[] | Reverse transmission ratios.                                                               |
+| `truck.differential.ratio` | float   | Differential ratio of the truck.                                                           |
+| `truck.speed`              | float   | Speedometer speed in meters per second. Uses negative value to represent reverse movement. |
 
 #### Wheels and axles
 
-| Key                                            | Type | Description |
-|------------------------------------------------|------|-------------|
-| `[truck/trailer#].wheels.count`                |      |             |
-| `[truck/trailer#].wheel.position`              |      |             |
-| `[truck/trailer#].wheel.powered`               |      |             |
-| `[truck/trailer#].wheel.simulated`             |      |             |
-| `[truck/trailer#].wheel.radius`                |      |             |
-| `[truck/trailer#].wheel.on_ground`             |      |             |
-| `[truck/trailer#].wheel.substance`             |      |             |
-| `substances.id`                                |      |             |
-| `[truck/trailer#].wheel.suspension.deflection` |      |             |
-| `[truck/trailer#].wheel.steerable`             |      |             |
-| `[truck/trailer#].wheel.steering`              |      |             |
-| `[truck/trailer#].wheel.rotation`              |      |             |
-| `[truck/trailer#].wheel.angular_velocity`      |      |             |
-| `trailer#.wheel.liftable`                      |      |             |
-| `[truck/trailer#].wheel.lift`                  |      |             |
-| `[truck/trailer#].wheel.lift.offset`           |      |             |
-| `[truck/truck.trailer].lift_axle`              |      |             |
-| `[truck/truck.trailer].lift_axle.indicator`    |      |             |
+| Key                                             | Type      | Description                                                                                                      |
+|-------------------------------------------------|-----------|------------------------------------------------------------------------------------------------------------------|
+| `[truck/trailer.#].wheels.count`                | u32       | Number of wheels on the truck or trailer.                                                                        |
+| `[truck/trailer.#].wheel.position`              | fvector[] | Position of the wheel in the vehicle space.                                                                      |
+| `[truck/trailer.#].wheel.powered`               | bool[]    | Whether the wheel is powered.                                                                                    |
+| `[truck/trailer.#].wheel.simulated`             | bool[]    | Whether the wheel is physically simulated.                                                                       |
+| `[truck/trailer.#].wheel.radius`                | float[]   | Wheel radius.                                                                                                    |
+| `[truck/trailer.#].wheel.on_ground`             | bool[]    | Whether the wheel is in contact with the ground.                                                                 |
+| `[truck/trailer.#].wheel.substance`             | u32[]     | Index of the substance below the wheel.                                                                          |
+| `substances.id`                                 | string[]  | In-game identifiers of substance types.                                                                          |
+| `[truck/trailer.#].wheel.angular_velocity`      | float[]   | Angular velocity of the wheel in rotations per second, forward positive.                                         |
+| `[truck/trailer.#].wheel.rotation`              | float[]   | Rolling rotation of the wheel in rotations in <0.0,1.0) range, forward increasing.                               |
+| `[truck/trailer.#].wheel.suspension.deflection` | float[]   | Vertical displacement of the wheel from its axis in meters.                                                      |
+| `[truck/trailer.#].wheel.steerable`             | bool[]    | Whether the wheel is physically steerable.                                                                       |
+| `[truck/trailer.#].wheel.steering`              | float[]   | Steering rotation of the wheel in rotations. Ranges from -0.25 for 90 degrees right to 0.25 for 90 degrees left. |
+| `trailer.#.wheel.liftable`                      | bool[]    | Whether the wheel is liftable.                                                                                   |
+| `[truck/trailer.#].wheel.lift`                  | float[]   | Lift state of the wheel in <0,1> range. 0 means non-lifted or non-liftable, 1 means fully lifted.                |
+| `[truck/trailer.#].wheel.lift.offset`           | float[]   | Vertical displacement of the wheel axle from its normal position in meters as result of lifting.                 |
+| `[truck/truck.trailer].lift_axle`               | bool      | Whether the lift-axle control for the truck or trailer is set to the lifted state.                               |
+| `[truck/truck.trailer].lift_axle.indicator`     | bool      | Whether the lift-axle indicator for the truck or trailer is lit.                                                 |
 
 #### Resources
 
-| Key                               | Type | Description |
-|-----------------------------------|------|-------------|
-| `truck.fuel.amount`               |      |             |
-| `truck.fuel.capacity`             |      |             |
-| `truck.fuel.consumption.average`  |      |             |
-| `truck.fuel.range`                |      |             |
-| `truck.fuel.warning`              |      |             |
-| `truck.fuel.warning.factor`       |      |             |
-| `truck.adblue`                    |      |             |
-| `truck.adblue.capacity`           |      |             |
-| `truck.adblue.warning`            |      |             |
-| `truck.adblue.warning.factor`     |      |             |
-| `truck.oil.pressure`              |      |             |
-| `truck.oil.pressure.warning`      |      |             |
-| `truck.oil.temperature`           |      |             |
-| `truck.water.temperature`         |      |             |
-| `truck.water.temperature.warning` |      |             |
-| `truck.battery.voltage`           |      |             |
-| `truck.battery.voltage.warning`   |      |             |
+| Key                                             | Type  | Description                                                                                                                               |
+|-------------------------------------------------|-------|-------------------------------------------------------------------------------------------------------------------------------------------|
+| `truck.fuel.amount`                             | float | Amount of fuel in liters.                                                                                                                 |
+| `truck.fuel.capacity`                           | float | Fuel tank capacity in liters.                                                                                                             |
+| `truck.fuel.consumption.average`                | float | Average fuel consumption in liters/km.                                                                                                    |
+| `truck.fuel.range`                              | float | Estimated range of truck with current amount of fuel in km.                                                                               |
+| `truck.fuel.warning`                            | bool  | Whether the low-fuel warning indicator is lit.                                                                                            |
+| `truck.fuel.warning.factor`                     | float | Fraction of fuel capacity below which the low-fuel warning indicator is lit.                                                              |
+| `truck.adblue`                                  | float | Amount of AdBlue in liters.                                                                                                               |
+| `truck.adblue.capacity`                         | float | AdBlue tank capacity in liters.                                                                                                           |
+| `truck.adblue.consumption.average`              | float | Average AdBlue consumption in liters/km. Defined in the API but doesn't seem to be implemented in ETS2 1.18. TruckTel requests it anyway. |
+| `truck.adblue.warning`                          | bool  | Whether the low-AdBlue warning indicator is lit.                                                                                          |
+| `truck.adblue.warning.factor`                   | float | Fraction of AdBlue capacity below which the low-fuel warning indicator is lit.                                                            |
+| `truck.oil.pressure`                            | float | Oil pressure in psi.                                                                                                                      |
+| `truck.oil.pressure.warning`                    | bool  | Whether the oil-pressure warning indicator is lit.                                                                                        |
+| `truck.oil.pressure.warning.threshold`*         | float | Oil pressure in psi below which the oil-pressure warning indicator is lit.                                                                |
+| `truck.oil.temperature`                         | float | Oil temperature in degrees Celsius.                                                                                                       |
+| `truck.water.temperature`                       | float | Coolant temperature in degrees Celsius.                                                                                                   |
+| `truck.water.temperature.warning`               | bool  | Whether the coolant-temperature warning indicator is lit.                                                                                 |
+| `truck.water.temperature.warning.threshold`*    | float | Coolant temperature above which the coolant-temperature warning indicator is lit.                                                         |
+| `truck.brake.air.pressure`                      | float | Pressure in the brake air tank in psi.                                                                                                    |
+| `truck.brake.air.pressure.warning`              | bool  | Whether the brake pressure warning indicator is lit.                                                                                      |
+| `truck.brake.air.pressure.warning.threshold`*   | float | Brake air pressure below which the brake pressure warning indicator is lit.                                                               |
+| `truck.brake.air.pressure.emergency`            | bool  | Whether emergency brakes are active as a result of low air pressure.                                                                      |
+| `truck.brake.air.pressure.emergency.threshold`* | float | Brake air pressure below which the emergency brakes activate.                                                                             |
+| `truck.brake.temperature`                       | float | Temperature of the brakes in degrees Celsius. Approximated for entire truck, not at the wheel level.                                      |
+| `truck.battery.voltage`                         | float | Battery voltage in volts.                                                                                                                 |
+| `truck.battery.voltage.warning`                 | bool  | Whether the battery warning indicator is lit.                                                                                             |
+| `truck.battery.voltage.warning.threshold`*      | float | Battery voltage below which the battery warning indicator is lit.                                                                         |
+
+Asterisks: TruckTel adds `.threshold` to the configuration attribute name to
+avoid conflict between configuration and channel data.
 
 #### Damage and wear
 
-| Key                             | Type | Description |
-|---------------------------------|------|-------------|
-| `truck.odometer`                |      |             |
-| `truck.wear.cabin`              |      |             |
-| `truck.wear.engine`             |      |             |
-| `truck.wear.transmission`       |      |             |
-| `[truck/trailer#].wear.chassis` |      |             |
-| `[truck/trailer#].wear.wheels`  |      |             |
-| `trailer#.wear.body`            |      |             |
-| `trailer#.cargo.damage`         |      |             |
+| Key                              | Type  | Description                                     |
+|----------------------------------|-------|-------------------------------------------------|
+| `truck.odometer`                 | float | Odometer of the truck in km.                    |
+| `truck.wear.engine`              | float | Engine wear in <0.0, 1.0> range.                |
+| `truck.wear.transmission`        | float | Transmission wear in <0.0, 1.0> range.          |
+| `[truck/trailer.#].wear.chassis` | float | Truck/trailer chassis wear in <0.0, 1.0> range. |
+| `[truck/trailer.#].wear.wheels`  | float | Average tire wear in <0.0, 1.0> range.          |
+| `truck.wear.cabin`               | float | Cabin wear in <0.0, 1.0> range.                 |
+| `trailer.#.wear.body`            | float | Trailer body wear in <0.0, 1.0> range.          |
+| `trailer.#.cargo.damage`         | float | Cargo damage in <0.0, 1.0> range.               |
 
 #### Lights and utilities
 
-| Key                            | Type | Description |
-|--------------------------------|------|-------------|
-| `truck.wipers`                 |      |             |
-| `truck.light.beam.low`         |      |             |
-| `truck.light.beam.high`        |      |             |
-| `truck.light.beacon`           |      |             |
-| `truck.light.aux.front`        |      |             |
-| `truck.light.aux.roof`         |      |             |
-| `truck.light.brake`            |      |             |
-| `truck.light.reverse`          |      |             |
-| `truck.hazard.warning`         |      |             |
-| `truck.[l/r]blinker`           |      |             |
-| `truck.light.[l/r]blinker`     |      |             |
-| `truck.light.parking`          |      |             |
-| `truck.dashboard.backlight`    |      |             |
-| `truck.navigation.distance`    |      |             |
-| `truck.navigation.speed.limit` |      |             |
-| `truck.navigation.time`        |      |             |
-| `truck.cruise_control`         |      |             |
-
-TODO: xref with API docs to check if this is everything and fill out type/description
+| Key                            | Type  | Description                                                                         |
+|--------------------------------|-------|-------------------------------------------------------------------------------------|
+| `truck.wipers`                 | bool  | State of the wiper switch.                                                          |
+| `truck.light.parking`          | bool  | State of the parking lights.                                                        |
+| `truck.light.beam.low`         | bool  | State of the low-beam lights.                                                       |
+| `truck.light.beam.high`        | bool  | State of the high-beam lights.                                                      |
+| `truck.light.aux.front`        | u32   | State of the front auxiliary lights. 0 = off, 1 = dimmed, 2 = full.                 |
+| `truck.light.aux.roof`         | u32   | State of the roof-mounted auxiliary lights. 0 = off, 1 = dimmed, 2 = full.          |
+| `truck.light.beacon`           | bool  | State of the beacon lights.                                                         |
+| `truck.[l/r]blinker`           | bool  | State of the left/right blinker switch.                                             |
+| `truck.hazard.warning`         | bool  | State of the hazard-lights switch.                                                  |
+| `truck.dashboard.backlight`    | float | Intensity of the dashboard backlight as factor <0;1>.                               |
+| `truck.light.[l/r]blinker`     | bool  | Actual state of the left/right blinker.                                             |
+| `truck.light.brake`            | bool  | Actual state of the brake lights.                                                   |
+| `truck.light.reverse`          | bool  | Actual state of the reverse lights.                                                 |
+| `truck.navigation.distance`    | float | The value of truck's navigation distance in meters.                                 |
+| `truck.navigation.time`        | float | The value of truck's navigation estimated time of arrival in second.                |
+| `truck.navigation.speed.limit` | float | The value of truck's navigation speed limit in m/s.                                 |
+| `truck.cruise_control`         | float | Speed selected for the cruise control in m/s. Zero when cruise control is disabled. |
 
 ### Events
 

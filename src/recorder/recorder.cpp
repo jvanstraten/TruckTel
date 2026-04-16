@@ -1,6 +1,7 @@
 #include "recorder.h"
 
 #include <csignal>
+#include <map>
 
 #include <common/scssdk_telemetry_common_channels.h>
 #include <common/scssdk_telemetry_common_configs.h>
@@ -84,15 +85,49 @@ void Recorder::record_event(const scs_event_t event, const void *event_info) {
 void Recorder::record_configuration(
     const scs_telemetry_configuration_t *scs_data
 ) {
+    // Ignore the compatibility single-trailer configuration.
+    if (!strcmp(scs_data->id, SCS_TELEMETRY_CONFIG_trailer)) return;
+
+    // Make an owned copy of all the attributes, to avoid dangling pointers to
+    // game data after the event handler returns.
     auto data = copy_scs_attributes(scs_data->attributes);
+
+    // Bodge: some config attributes conflict with channels, so we adjust them
+    // slightly.
+    static const std::map<std::string, std::string> CONFIG_ATTRIBUTE_BODGES = {
+        {SCS_TELEMETRY_CONFIG_ATTRIBUTE_air_pressure_warning,
+         "brake.air.pressure.warning.threshold"},
+        {SCS_TELEMETRY_CONFIG_ATTRIBUTE_air_pressure_emergency,
+         "brake.air.pressure.emergency.threshold"},
+        {SCS_TELEMETRY_CONFIG_ATTRIBUTE_oil_pressure_warning,
+         "oil.pressure.warning.threshold"},
+        {SCS_TELEMETRY_CONFIG_ATTRIBUTE_water_temperature_warning,
+         "water.temperature.warning.threshold"},
+        {SCS_TELEMETRY_CONFIG_ATTRIBUTE_battery_voltage_warning,
+         "battery.voltage.warning.threshold"},
+    };
+    for (auto &value : data) {
+        const auto it = CONFIG_ATTRIBUTE_BODGES.find(value.name);
+        if (it != CONFIG_ATTRIBUTE_BODGES.end()) {
+            value.name = it->second;
+        }
+    }
+
+    // Save the configuration.
     configuration.push(scs_data->id, std::move(data));
 }
 
 void Recorder::record_gameplay_event(
     const scs_telemetry_gameplay_event_t *scs_data
 ) {
+    // Make an owned copy of all the attributes, to avoid dangling pointers to
+    // game data after the event handler returns.
     auto data = copy_scs_attributes(scs_data->attributes);
+
+    // Save the event ID in a special key.
     data.emplace_back(NamedValue::event_id(scs_data->id));
+
+    // Save the event.
     gameplay.push(std::move(data));
 }
 
@@ -136,10 +171,11 @@ void Recorder::register_channel_handler(const ChannelMetadata &metadata) {
 }
 
 void Recorder::register_trailer_handler(ChannelMetadata metadata) {
-    register_channel_handler(metadata);
-
-    // Support multiple trailers.
-    if (metadata.name.substr(0, 8) != "trailer.") return;
+    if (metadata.name.substr(0, 8) != "trailer.") {
+        // Apparently not a trailer channel? Fine, whatever.
+        register_channel_handler(metadata);
+        return;
+    }
     const auto remainder = metadata.name.substr(7); // including period
     for (uint32_t trailer_index = 0;
          trailer_index < SCS_TELEMETRY_trailers_count; trailer_index++) {
