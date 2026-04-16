@@ -24,3 +24,24 @@ content-types:
     then: image/gif
   - if: .*\.ico
     then: image/vnd.microsoft.icon
+
+# Example of a custom data structure. See api.md for more information.
+custom-structures:
+  gps:
+    coord:
+      x:
+        key: truck.world.placement.0
+        operator: round
+      y:
+        key: truck.world.placement.1
+        operator: round
+      z:
+        key: truck.world.placement.2
+        operator: round
+    heading:
+      key: truck.world.placement.3
+      scale: 360
+      operator: round
+    time:
+      key: game.time
+      operator: date
