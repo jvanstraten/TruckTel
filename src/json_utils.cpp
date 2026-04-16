@@ -315,7 +315,11 @@ static nlohmann::json json_apply_operator(
 
         // Format the date...
         struct tm datetime = {};
+#if defined(_MSC_VER)
+        gmtime_s(&datetime, &timestamp);
+#else
         gmtime_r(&timestamp, &datetime);
+#endif
         char buf[32];
         strftime(buf, sizeof buf, "%Y-%m-%dT%H:%M:%SZ", &datetime);
 

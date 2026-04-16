@@ -5,6 +5,7 @@ on:
   pull_request:
   push:
     branches: [main]
+    tags: v*
 
 jobs:
   build:
@@ -38,3 +39,46 @@ jobs:
         with:
           name: output-linux
           path: build/libtrucktel.so
+
+  release:
+    needs: build
+    if: ${{ startsWith(github.ref, 'refs/tags/') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: output-windows
+          path: bundled
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: output-linux
+          path: bundled
+
+      - name: Build binary release package
+        run: |
+          cd bundled
+          ls -R
+          7z a ../trucktel.zip .
+
+      - name: Make release
+        uses: actions/create-release@v1
+        id: create_release
+        with:
+          draft: false
+          prerelease: false
+          tag_name: ${{ github.ref }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: Upload release package
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: trucktel.zip
+          asset_name: trucktel.zip
+          asset_content_type: application/zip
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
