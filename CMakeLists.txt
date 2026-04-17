@@ -95,6 +95,5 @@ target_link_options(trucktel PRIVATE /EXPORT:scs_telemetry_init /EXPORT:scs_tele
 endif()
 
 # Dummy executable for (very) basic testing.
-add_executable(dummy src/dummy/main.cpp
-        src/server/wspp_config.h)
+add_executable(dummy src/dummy/main.cpp)
 target_link_libraries(dummy PRIVATE trucktel)
