@@ -33,6 +33,18 @@ and Linux, but have no MacOS system to test a MacOS build on. I did try to get
 Actions to build the module for MacOS, but the SCS telemetry header files
 immediately complained -- I'm out of my depth here, pull requests welcome.
 
+## What's the project status?
+
+TruckTel should be in a usable state, but it's not well-tested. In terms of
+platforms, I can personally only test ATS2 on Linux and Windows. It *should*
+work on ATS, but I don't own the game. It *should* work on MacOS (fundamentally
+anyway; there might be build issues that need to be resolved), but I don't have
+a machine running MacOS. And the APIs *should* all work, but there's no
+automated testing (kinda hard to run ETS2 in CI) and I can only test so much
+manually. There's no mods using this yet as far as I'm aware, so no real-world
+experience either. Until there's a bit more data to go on, I'll keep the
+versions in the 0.0.x range.
+
 ## How does it work?
 
 The game's plugin system was hardly designed to run a webserver in; plugins are
