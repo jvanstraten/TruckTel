@@ -70,6 +70,11 @@ private:
     /// upgrade to a websocket connection.
     void on_open(const wspp::connection_hdl &hdl);
 
+    /// Called by WebsocketPP when a websocket receives a message.
+    void on_message(
+        const wspp::connection_hdl &hdl, const wspp::Server::message_ptr &msg
+    );
+
     /// Called by WebsocketPP when a websocket connection is closed.
     void on_close(const wspp::connection_hdl &hdl);
 

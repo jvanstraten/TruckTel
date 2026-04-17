@@ -48,6 +48,8 @@ add_library(trucktel SHARED
         src/logger.h
         src/json_utils.h
         src/json_utils.cpp
+        src/input.h
+        src/input.cpp
         src/recorder/event.cpp
         src/recorder/event.h
         src/recorder/configuration.h
@@ -91,7 +93,12 @@ target_compile_definitions(trucktel
 # change the function linkage within C++ because it's defined by the SCS header
 # files.
 if(MSVC)
-target_link_options(trucktel PRIVATE /EXPORT:scs_telemetry_init /EXPORT:scs_telemetry_shutdown)
+target_link_options(trucktel PRIVATE
+        /EXPORT:scs_telemetry_init
+        /EXPORT:scs_telemetry_shutdown
+        /EXPORT:scs_input_init
+        /EXPORT:scs_input_shutdown
+)
 endif()
 
 # Dummy executable for (very) basic testing.

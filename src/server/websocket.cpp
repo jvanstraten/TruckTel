@@ -1,16 +1,54 @@
 #include "websocket.h"
 
 #include "api.h"
+#include "input.h"
 #include "json_utils.h"
 #include "recorder/recorder.h"
 #include "server.h"
 
 void WebSocket::send(const nlohmann::json &data) {
-    con->send(data.dump());
+    if (con->send(data.dump())) {
+        Logger::error("failed to send websocket message");
+    }
     last_message = std::chrono::system_clock::now();
 }
 
+/// Handles an incoming websocket message.
+nlohmann::json WebSocket::receive(const std::string &message) {
+    try {
+        const auto json = nlohmann::json::parse(message);
+
+        // Incoming messages are interpreted as input commands regardless of
+        // websocket endpoint type. These must be query arrays for the input
+        // subsystem.
+        if (!json.is_array()) return "array expected";
+
+        // Flatten the JSON array into strings for the query. This also means
+        // that we're converting value numbers to a string only to then parse
+        // them as a float again... yuck.
+        std::vector<std::string> query;
+        query.emplace_back(API_INPUT_QUERY);
+        for (const auto &json_element : json) {
+            if (json_element.is_string()) {
+                query.emplace_back(json_element.get<std::string>());
+            } else {
+                query.emplace_back(json_element.dump());
+            }
+        }
+        return Input::run_query(query);
+
+    } catch (const std::exception &e) {
+        return e.what();
+    }
+}
+
 void WebSocket::update_internal(const bool first) {
+
+    // Input websockets don't need to be updated, because they only have to
+    // send messages in response to received messages.
+    if (data_type == DataType::INPUT) {
+        return;
+    }
 
     // Handle throttling.
     auto now = std::chrono::system_clock::now();
@@ -106,14 +144,14 @@ std::optional<WebSocket> WebSocket::handle_request(
 
             // The event data type has one extra command that specifies the
             // data structuring.
-            if (api_command.size() < 1) {
+            if (api_command.empty()) {
                 con->close(
                     wspp::close::status::normal,
                     "missing structure in " + url.join_path()
                 );
                 return {};
             }
-            std::string structure = api_command[0];
+            const std::string &structure = api_command[0];
             if (structure == API_STRUCTURE_STRUCT) {
                 data_type = DataType::EVENT_STRUCT;
             } else if (structure == API_STRUCTURE_FLAT) {
@@ -143,6 +181,15 @@ std::optional<WebSocket> WebSocket::handle_request(
             data_type = DataType::DATA;
         } else if (data_source == API_WS_DELTA) {
             data_type = DataType::DELTA;
+        } else if (data_source == API_WS_INPUT) {
+            data_type = DataType::INPUT;
+            if (!api_command.empty()) {
+                con->close(
+                    wspp::close::status::normal,
+                    "unexpected arguments in " + url.join_path()
+                );
+                return {};
+            }
         } else {
             con->close(
                 wspp::close::status::normal,
@@ -158,7 +205,8 @@ std::optional<WebSocket> WebSocket::handle_request(
                 throttle = std::stoul(it->second);
             } catch (const std::exception &e) {
                 con->close(
-                    wspp::close::status::normal, "invalid throttle command"
+                    wspp::close::status::normal,
+                    std::string("invalid throttle command: ") + e.what()
                 );
                 return {};
             }
@@ -179,6 +227,15 @@ void WebSocket::update() {
         update_internal(false);
     } catch (std::exception &e) {
         con->close(wspp::close::status::internal_endpoint_error, e.what());
+    }
+}
+
+void WebSocket::on_message(const std::string &message) {
+    const auto response = receive(message);
+
+    // Only websockets of type INPUT actually send responses.
+    if (data_type == DataType::INPUT) {
+        send(response);
     }
 }
 

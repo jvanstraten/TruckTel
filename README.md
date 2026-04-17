@@ -5,10 +5,15 @@
 This is a cross-platform plugin for Euro Truck Simulator 2 and (probably,
 untested) American Truck Simulator to bridge the
 [SCS telemetry SDK](https://modding.scssoft.com/wiki/Documentation/Engine/SDK/Telemetry)
-to a REST/websocket webserver. **It is immediately not useful for players**,
-but rather is something that mod developers can use to get data from the game
-without actually having to worry about game internals. So **if you're not a
-developer, you should probably stop reading here.**
+to a REST/websocket webserver. It also supports "semantical input" via that
+API. With those things, you should be able to make e.g. a fully functional
+browser-based dashboard emulator, and statically host it entirely from the
+game.
+
+**TruckTel is not immediately useful for players**, but rather is something
+that mod developers can use to get data from the game without actually having
+to worry about game internals. So **if you're not a developer, you should
+probably stop reading here.**
 
 ## Why?
 

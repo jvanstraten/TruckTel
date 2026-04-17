@@ -252,12 +252,96 @@ same as it is for channel and configuration data: a JSON object representing a
 key-value store, in either the flat or hierarchical form. The event ID is added
 to the object via a `_` key in the toplevel object.
 
+### Semantical input
+
+TruckTel can optionally also provide access to the SCS input API. This allows
+you to control certain things in the game via REST and websockets as well. For
+instance, you could make a complete virtual dashboard with functional buttons
+this way.
+
+The SCS input API supports two types of input devices: generic and semantical.
+The difference is that, for generic devices, inputs pass through the game's
+input mapping configuration, while for semantical, game inputs are controlled
+directly. For example, the semantical channels `lblinkerh` and `rblinkerh`
+could be tied to a physical blinker stalk. A generic device would instead be
+something like a controller, with general-purpose buttons, switches, and axes.
+TruckTel currently implements a semantical input device only, because this
+makes more sense for the intended use case of web pages or touchscreen apps
+that are designed specifically for ETS2/ATS.
+
+The game refers to input channels as "mixes". I guess this originates from the
+way their input mapping configuration works: via some limited expression
+support, several kinds of inputs are "mixed" together. For instance, you might
+be able to control the camera both with the mouse, a controller, and the
+semantical channels `camlr` and `camud` simultaneously. The input configuration
+file determines how these three inputs would be mixed.
+
+Semantical inputs can be either binary or floating-point axes. TruckTel
+supports both.
+
+Unfortunately, this is mostly where the API documentation ends. This is all it
+has to say on the subject of which inputs are supported and how they are named:
+
+> Note that only subset of mixes are supported. If mix expression
+> in a fresh controls.sii references something like "semantical.<mixname>?0",
+> then semantical input is likely supported for that mix.
+
+The documentation also doesn't state what a reasonable value range for a float
+input is. You might expect it to be normalized to <0,1> or <-1,1>, but for
+camera control at least, that yields very slow movement. The limits are
+arbitrarily set to <-100000,100000> in TruckTel.
+
+At the bottom of this page is a list of semantical input IDs that I manually
+pulled from the default ETS2 1.18 configuration file. For some inputs it's
+fairly easy to guess at what they do, for others not so much. You'll have to
+do your own reverse-engineering.
+
+Unlike data channels and configuration, TruckTel doesn't just register every
+known semantical input channel. You have to configure which channels you want
+in `config.yaml` yourself. With the default `config.yaml`, the input subsystem
+is disabled altogether.
+
+The main reason for this is that it turns out that merely registering an input
+will change the behavior of the game to the point where, with the default
+config, you can't even manually start the truck anymore. Normally the E key is
+tied to `engine` and starts both the engine and electronics simultaneously, but
+merely binding an input to `engineelect` changes the behavior of the `engine`
+input to control *only* the engine, with only the TruckTel API being bound to
+turning on the electronics.
+
+Another reason is that the game wants a player-friendly name for inputs (this
+is what it uses in hint popups), and for most of the inputs I have no idea what
+a reasonable name would be.
+
+The `config.yaml` structure is straightforward. Here's an example:
+
+```yaml
+input:
+  float:
+    camlr: Camera yaw axis
+    camud: Camera pitch axis
+  binary:
+    lblinkerh: Left blinker switch
+    rblinkerh: Right blinker switch
+    engine: Toggle engine
+```
+
+The `float` object specifies floating-point inputs (axes); the `binary`
+object specifies binary inputs (buttons and switches) in the same format. Said
+format is just an object, of which the keys are the input identifiers, and the
+values are the player-friendly names.
+
+If the game doesn't like one or more of the channels you've defined, it will
+emit an error message in the in-game log with a numeric index. TruckTel will,
+in turn, emit a mapping from numeric index to identifier to its log file (and
+only the log file, so as not to spam the in-game log).
+
 ## Server endpoints
 
 Your app can get data from TruckTel either via normal HTTP requests (REST) or
 via websockets.
 
-### REST
+### REST data access
 
 Data in the channel and configuration namespace can be requested via HTTP
 queries of the following form:
@@ -333,7 +417,7 @@ http://localhost:8080/api/rest/struct/truck/light:
 
 In the most extreme case, you can just request all data in one go this way.
 
-### Websocket
+### Websocket data access
 
 The REST endpoints above require a web application to poll the server
 constantly, without knowing whether new data is even available. This is
@@ -383,6 +467,75 @@ Delta-coding would be useful for instance for `truck.light`: your app will get
 a message only when the user toggles a light, usually immediately (regardless
 of throttling), unless the player is playing with their truck's lights or
 something.
+
+### REST input control
+
+The virtual input subsystem can be controlled via HTTP queries of the following
+forms:
+
+```
+http://<server>:<port>/api/rest/input/list
+http://<server>:<port>/api/rest/input/press/<input-id>
+http://<server>:<port>/api/rest/input/hold/<input-id>
+http://<server>:<port>/api/rest/input/release/<input-id>
+http://<server>:<port>/api/rest/input/set/<input-id>/<float-value>
+```
+
+The `list` command returns a JSON object of which the keys are all the input
+IDs that are currently configured, and the values are either `"binary"` or
+`"float"` to indicate the channel type. For example:
+
+```json
+{
+   "camlr": "float",
+   "camud": "float",
+   "lblinkerh": "binary",
+   "rblinkerh": "binary"
+}
+```
+
+The `press`, `hold`, and `release` commands are meant to be used to control
+binary channels. `press` will assert the input for one frame, and then
+automatically release it again. If necessary (because you're spamming input
+and/or the game is running in slideshow mode on a potato), TruckTel will queue
+up button presses for a channel. `hold` will assert the input without releasing
+it automatically, until either a `press` or `release` command is given.
+
+The `set` command is meant for floating-point channels/axes. It should speak
+for itself.
+
+Except for `input`, the JSON return value of the query will normally be `true`,
+to indicate that the event was queued up successfully. It will be `false` if
+the channel does not exist. If something else goes wrong, it will be an error
+message as a JSON string.
+
+### Websocket input control
+
+Any websocket you open can control inputs. Simply send JSON arrays of strings
+representing the REST query path after the `input` element. For example,
+
+```json
+["press", "engine"]
+```
+
+would simulate a button press that toggles whether the Truck's engine is
+enabled.
+
+The websockets used for monitoring data or events will not reply to input
+messages, to avoid ambiguity of the messages. That is, you won't get to see if
+a command was executed successfully. Usually this shouldn't matter; there's no
+good reason why it should fail other than misconfiguration.
+
+Nevertheless, if you do want to know, for example for debugging, you can
+connect to the following endpoint:
+
+```
+http://<server>:<port>/api/ws/input
+```
+
+TruckTel will not send any messages on this websocket, except in direct
+response to an input message that it receives. The response will be equivalent
+to that of an HTTP input command.
 
 ## Data reference
 
@@ -713,3 +866,298 @@ Event called when player uses a ferry or train.
 | `source.name` | string | The name of the transportation source.                               |
 | `target.id`   | string | The ID of the transportation target.                                 |
 | `target.name` | string | The name of the transportation target.                               |
+
+### Semantical inputs
+
+Since there's no game documentation and I haven't tried the vast majority of
+these, most descriptions are empty. For the inputs without description, the
+type is a guess based on the mix expression in the default game configuration,
+and it's unknown if the input is functional at all.
+
+Trying out inputs and have descriptions to share? Pull requests welcome!
+
+| Input ID       | Type   | Description                                 |
+|----------------|--------|---------------------------------------------|
+| `j_left`       | binary |                                             |
+| `j_right`      | binary |                                             |
+| `j_up`         | binary |                                             |
+| `j_down`       | binary |                                             |
+| `selectfcs`    | binary |                                             |
+| `back`         | binary |                                             |
+| `skip`         | binary |                                             |
+| `scrol_up`     | binary |                                             |
+| `scrol_dwn`    | binary |                                             |
+| `mapzoom_in`   | binary |                                             |
+| `mapzoom_out`  | binary |                                             |
+| `trs_zoom_in`  | binary |                                             |
+| `trs_zoom_out` | binary |                                             |
+| `joy_nav_prv`  | binary |                                             |
+| `joy_nav_nxt`  | binary |                                             |
+| `joy_sec_prv`  | binary |                                             |
+| `joy_sec_nxt`  | binary |                                             |
+| `scroll_j_x`   | float  |                                             |
+| `scroll_j_y`   | float  |                                             |
+| `shortcut_1`   | binary |                                             |
+| `shortcut_1h`  | binary |                                             |
+| `shortcut_2`   | binary |                                             |
+| `shortcut_2h`  | binary |                                             |
+| `shortcut_3`   | binary |                                             |
+| `shortcut_3h`  | binary |                                             |
+| `shortcut_4`   | binary |                                             |
+| `shortcut_4h`  | binary |                                             |
+| `pause`        | binary |                                             |
+| `screenshot`   | binary |                                             |
+| `cam1`         | binary |                                             |
+| `cam2`         | binary |                                             |
+| `cam3`         | binary |                                             |
+| `cam4`         | binary |                                             |
+| `cam5`         | binary |                                             |
+| `cam6`         | binary |                                             |
+| `cam7`         | binary |                                             |
+| `cam8`         | binary |                                             |
+| `camcycle`     | binary |                                             |
+| `camreset`     | binary |                                             |
+| `camrotate`    | binary |                                             |
+| `camzoomin`    | binary |                                             |
+| `camzoomout`   | binary |                                             |
+| `camzoom`      | binary |                                             |
+| `camfwd`       | binary |                                             |
+| `camback`      | binary |                                             |
+| `camleft`      | binary |                                             |
+| `camright`     | binary |                                             |
+| `camup`        | binary |                                             |
+| `camdown`      | binary |                                             |
+| `lookleft`     | binary |                                             |
+| `lookright`    | binary |                                             |
+| `camlr`        | float  | Controls camera yaw *rate*, positive right. |
+| `camud`        | float  |                                             |
+| `j_cam_lk_lr`  | float  |                                             |
+| `j_cam_lk_ud`  | float  |                                             |
+| `j_cam_mv_lr`  | float  |                                             |
+| `j_cam_mv_ud`  | float  |                                             |
+| `j_trzoom_in`  | binary |                                             |
+| `j_trzoom_out` | binary |                                             |
+| `j_tr_cam_res` | binary |                                             |
+| `j_tr_cam_swi` | binary |                                             |
+| `j_tr_lights`  | binary |                                             |
+| `j_tr_fullsc`  | binary |                                             |
+| `j_tr_att_tra` | binary |                                             |
+| `j_mappan_x`   | float  |                                             |
+| `j_mappan_y`   | float  |                                             |
+| `j_mapzom_in`  | binary |                                             |
+| `j_mapzom_out` | binary |                                             |
+| `lookpos1`     | binary |                                             |
+| `lookpos2`     | binary |                                             |
+| `lookpos3`     | binary |                                             |
+| `lookpos4`     | binary |                                             |
+| `lookpos5`     | binary |                                             |
+| `lookpos6`     | binary |                                             |
+| `lookpos7`     | binary |                                             |
+| `lookpos8`     | binary |                                             |
+| `lookpos9`     | binary |                                             |
+| `looksteer`    | binary |                                             |
+| `lookblink`    | binary |                                             |
+| `activate`     | binary |                                             |
+| `menu`         | binary |                                             |
+| `engine`       | binary |                                             |
+| `engineelect`  | binary |                                             |
+| `ignitionoff`  | binary |                                             |
+| `ignitionon`   | binary |                                             |
+| `ignitionstrt` | binary |                                             |
+| `attach`       | binary |                                             |
+| `frontsuspup`  | binary |                                             |
+| `frontsuspdwn` | binary |                                             |
+| `rearsuspup`   | binary |                                             |
+| `rearsuspdwn`  | binary |                                             |
+| `suspreset`    | binary |                                             |
+| `horn`         | binary |                                             |
+| `airhorn`      | binary |                                             |
+| `lighthorn`    | binary |                                             |
+| `beacon`       | binary |                                             |
+| `motorbrake`   | binary |                                             |
+| `engbraketog`  | binary |                                             |
+| `engbrakeup`   | binary |                                             |
+| `engbrakedwn`  | binary |                                             |
+| `trailerbrake` | binary |                                             |
+| `retarderup`   | binary |                                             |
+| `retarderdown` | binary |                                             |
+| `retarder0`    | binary |                                             |
+| `retarder1`    | binary |                                             |
+| `retarder2`    | binary |                                             |
+| `retarder3`    | binary |                                             |
+| `retarder4`    | binary |                                             |
+| `retarder5`    | binary |                                             |
+| `liftaxle`     | binary |                                             |
+| `liftaxlet`    | binary |                                             |
+| `slideaxlefwd` | binary |                                             |
+| `slideaxlebwd` | binary |                                             |
+| `slideaxleman` | binary |                                             |
+| `trlrsuspup`   | binary |                                             |
+| `trlrsuspdwn`  | binary |                                             |
+| `diflock`      | binary |                                             |
+| `rwinopen`     | binary |                                             |
+| `rwinclose`    | binary |                                             |
+| `lwinopen`     | binary |                                             |
+| `lwinclose`    | binary |                                             |
+| `engbrakeauto` | binary |                                             |
+| `retarderauto` | binary |                                             |
+| `embrake`      | binary |                                             |
+| `laneassmode`  | binary |                                             |
+| `tranpwrmode`  | binary |                                             |
+| `parkingbrake` | binary |                                             |
+| `handbrake`    | binary |                                             |
+| `wipers`       | binary |                                             |
+| `wipersback`   | binary |                                             |
+| `wipers0`      | binary |                                             |
+| `wipers1`      | binary |                                             |
+| `wipers2`      | binary |                                             |
+| `wipers3`      | binary |                                             |
+| `wipers4`      | binary |                                             |
+| `cruiectrl`    | binary |                                             |
+| `cruiectrlinc` | binary |                                             |
+| `cruiectrldec` | binary |                                             |
+| `cruiectrlres` | binary |                                             |
+| `accmode`      | binary |                                             |
+| `laneassist`   | binary |                                             |
+| `light`        | binary |                                             |
+| `lightoff`     | binary |                                             |
+| `lightpark`    | binary |                                             |
+| `lighton`      | binary |                                             |
+| `hblight`      | binary |                                             |
+| `lblinker`     | binary | Left blinker toggle button.                 |
+| `lblinkerh`    | binary | Left blinker switch.                        |
+| `rblinker`     | binary | Right blinker toggle button.                |
+| `rblinkerh`    | binary | Right blinker switch.                       |
+| `flasher4way`  | binary |                                             |
+| `showmirrors`  | binary |                                             |
+| `showhud`      | binary |                                             |
+| `navmap`       | binary |                                             |
+| `photo_mode`   | binary |                                             |
+| `quicksave`    | binary |                                             |
+| `quickload`    | binary |                                             |
+| `acaquickr`    | binary |                                             |
+| `radio`        | binary |                                             |
+| `radionext`    | binary |                                             |
+| `radioprev`    | binary |                                             |
+| `radioup`      | binary |                                             |
+| `radiodown`    | binary |                                             |
+| `display`      | binary |                                             |
+| `quickpark`    | binary |                                             |
+| `dashmapzoom`  | binary |                                             |
+| `tripreset`    | binary |                                             |
+| `sb_activate`  | binary |                                             |
+| `sb_swap`      | binary |                                             |
+| `infotainment` | binary |                                             |
+| `mapcenter`    | binary |                                             |
+| `photores`     | binary |                                             |
+| `photomove`    | binary |                                             |
+| `phototake`    | binary |                                             |
+| `photofwd`     | binary |                                             |
+| `photobwd`     | binary |                                             |
+| `photoleft`    | binary |                                             |
+| `photoright`   | binary |                                             |
+| `photoup`      | binary |                                             |
+| `photodown`    | binary |                                             |
+| `photorolll`   | binary |                                             |
+| `photorollr`   | binary |                                             |
+| `photosman`    | binary |                                             |
+| `photo_opts`   | binary |                                             |
+| `photosnap`    | binary |                                             |
+| `photo_hctrl`  | binary |                                             |
+| `photonames`   | binary |                                             |
+| `photozoomout` | binary |                                             |
+| `photozoomin`  | binary |                                             |
+| `phot_z_j_out` | binary |                                             |
+| `phot_z_j_in`  | binary |                                             |
+| `album_pgup`   | binary |                                             |
+| `album_pgdn`   | binary |                                             |
+| `album_itup`   | binary |                                             |
+| `album_itdn`   | binary |                                             |
+| `album_itlf`   | binary |                                             |
+| `album_itrg`   | binary |                                             |
+| `album_ithm`   | binary |                                             |
+| `album_iten`   | binary |                                             |
+| `album_itac`   | binary |                                             |
+| `album_itop`   | binary |                                             |
+| `album_itdl`   | binary |                                             |
+| `camwalk_for`  | binary |                                             |
+| `camwalk_back` | binary |                                             |
+| `camwalk_righ` | binary |                                             |
+| `camwalk_left` | binary |                                             |
+| `camwalk_run`  | binary |                                             |
+| `camwalk_jump` | binary |                                             |
+| `camwalk_crou` | binary |                                             |
+| `camwalk_lr`   | float  |                                             |
+| `camwalk_ud`   | float  |                                             |
+| `gearup`       | binary |                                             |
+| `geardown`     | binary |                                             |
+| `gear0`        | binary |                                             |
+| `geardrive`    | binary |                                             |
+| `gearreverse`  | binary |                                             |
+| `gearuphint`   | binary |                                             |
+| `geardownhint` | binary |                                             |
+| `transemi`     | binary |                                             |
+| `drive`        | binary |                                             |
+| `reverse`      | binary |                                             |
+| `cmirrorsel`   | binary |                                             |
+| `fmirrorsel`   | binary |                                             |
+| `mirroryawl`   | binary |                                             |
+| `mirroryawr`   | binary |                                             |
+| `mirrorpitu`   | binary |                                             |
+| `mirrorpitl`   | binary |                                             |
+| `mirrorreset`  | binary |                                             |
+| `quicksel1`    | binary |                                             |
+| `quicksel2`    | binary |                                             |
+| `quicksel3`    | binary |                                             |
+| `quicksel4`    | binary |                                             |
+| `quicksel5`    | binary |                                             |
+| `quicksel6`    | binary |                                             |
+| `quicksel7`    | binary |                                             |
+| `quicksel8`    | binary |                                             |
+| `mpptt`        | binary |                                             |
+| `replayhidec`  | binary |                                             |
+| `gearsel1on`   | binary |                                             |
+| `gearsel1off`  | binary |                                             |
+| `gearsel1tgl`  | binary |                                             |
+| `gearsel2on`   | binary |                                             |
+| `gearsel2off`  | binary |                                             |
+| `gearsel2tgl`  | binary |                                             |
+| `gear1`        | binary |                                             |
+| `gear2`        | binary |                                             |
+| `gear3`        | binary |                                             |
+| `gear4`        | binary |                                             |
+| `gear5`        | binary |                                             |
+| `gear6`        | binary |                                             |
+| `gear7`        | binary |                                             |
+| `gear8`        | binary |                                             |
+| `gear9`        | binary |                                             |
+| `gear10`       | binary |                                             |
+| `gear11`       | binary |                                             |
+| `gear12`       | binary |                                             |
+| `gear13`       | binary |                                             |
+| `gear14`       | binary |                                             |
+| `gear15`       | binary |                                             |
+| `gear16`       | binary |                                             |
+| `adjuster`     | binary |                                             |
+| `advmouse`     | binary |                                             |
+| `advetamode`   | binary |                                             |
+| `gar_man`      | binary |                                             |
+| `advzoomin`    | binary |                                             |
+| `advzoomout`   | binary |                                             |
+| `advoptions`   | binary |                                             |
+| `services`     | binary |                                             |
+| `assistact1`   | binary |                                             |
+| `assistact2`   | binary |                                             |
+| `assistact3`   | binary |                                             |
+| `assistact4`   | binary |                                             |
+| `assistact5`   | binary |                                             |
+| `adj_seats`    | binary |                                             |
+| `adj_mirrors`  | binary |                                             |
+| `adj_lights`   | binary |                                             |
+| `adj_uimirror` | binary |                                             |
+| `chat_act`     | binary |                                             |
+| `quick_chat`   | binary |                                             |
+| `cycl_zoom`    | binary |                                             |
+| `name_tags`    | binary |                                             |
+| `headreset`    | binary |                                             |
+| `menustereo`   | binary |                                             |

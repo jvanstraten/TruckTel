@@ -38,6 +38,12 @@ static constexpr auto API_WS_DATA = "data";
 /// If the above yields an empty object, no message is sent at all.
 static constexpr auto API_WS_DELTA = "delta";
 
+/// Websocket "input" data type. Input websockets do not report any game data.
+/// Instead, they send responses to any received input messages. Note that all
+/// websocket types will *handle* input messages, but only this type will
+/// respond to them.
+static constexpr auto API_WS_INPUT = "input";
+
 //==============================================================================
 // Websocket throttling
 //==============================================================================
@@ -85,6 +91,63 @@ static constexpr auto API_STRUCTURE_FLAT = "flat";
 /// Send only the value of which the key exactly matches the quea single value
 /// of which the key exactly matches the query.
 static constexpr auto API_STRUCTURE_SINGLE = "single";
+
+//==============================================================================
+// Input subsystem REST endpoints
+//==============================================================================
+
+/// Path element used in place of an API_STRUCTURE_* to address the input
+/// subsystem.
+static constexpr auto API_INPUT_QUERY = "input";
+
+/// Command that lists all available inputs and their data types. No further
+/// path elements.
+static constexpr auto API_INPUT_COMMAND_LIST = "list";
+
+/// Command that sets the state of an input. Must be followed by two more path
+/// elements: the input name, and then a floating point number in range <-1,1>.
+/// Returns true on success, false if the channel does not exist or could not
+/// be set, or an error string if the number is invalid.
+static constexpr auto API_INPUT_COMMAND_SET = "set";
+
+/// Command that "holds down" an input. Must be followed by the input name.
+/// Equivalent to setting the input to its maximum value. Returns true on
+/// success or false if the channel does not exist or could not be set.
+static constexpr auto API_INPUT_COMMAND_HOLD = "hold";
+
+/// Command that "releases" an input. Must be followed by the input name.
+/// Equivalent to setting the input to its minimum value. Returns true on
+/// success or false if the channel does not exist or could not be set.
+static constexpr auto API_INPUT_COMMAND_RELEASE = "release";
+
+/// Command that "presses" an input. Must be followed by the input name. This
+/// will report 1/down to the game for 1 frame, and then revert to -1/released.
+/// Button presses will be queued up if necessary. Returns true on success or
+/// false if the channel does not exist or could not be set.
+static constexpr auto API_INPUT_COMMAND_PRESS = "press";
+
+/// Minimum value for an input channel. One would expect the game would expect
+/// values to be normalized on the input, but, if nothing else, camlr yields
+/// quite slow movement within <-1,1>.
+static constexpr float API_INPUT_VALUE_MIN = -100000.0f;
+
+/// Midpoint value for an input channel. Used as a threshold for binary
+/// channels.
+static constexpr float API_INPUT_VALUE_MID = 0.0f;
+
+/// Maximum value for an input channel.
+static constexpr float API_INPUT_VALUE_MAX = 100000.0f;
+
+/// Dummy value used internally to indicate a button press instead of setting a
+/// value directly. Don't use this with the set API, this is only used
+/// internally.
+static constexpr float API_INPUT_VALUE_PRESS = API_INPUT_VALUE_MIN - 1;
+
+/// Identifier used for binary channels in the list command.
+static constexpr auto API_INPUT_TYPE_BINARY = "binary";
+
+/// Identifier used for floating-point channels in the list command.
+static constexpr auto API_INPUT_TYPE_FLOAT = "float";
 
 //==============================================================================
 // TruckTel-defined data
