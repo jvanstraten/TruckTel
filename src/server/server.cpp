@@ -55,22 +55,27 @@ void Server::on_open(const wspp::connection_hdl &hdl) {
     }
 }
 
+void Server::on_message(
+    const wspp::connection_hdl &hdl, const wspp::Server::message_ptr &msg
+) {
+    const auto it = connections.find(hdl);
+    if (it != connections.end()) {
+        it->second.on_message(msg->get_payload());
+    }
+}
+
 void Server::on_close(const wspp::connection_hdl &hdl) {
     connections.erase(hdl);
 }
 
 void Server::on_shutdown() {
-    Logger::info("on_shutdown() start");
     endpoint.stop_listening();
     for (auto &[_, websocket] : connections) {
-        Logger::info("shutting down socket");
         websocket.shutdown();
     }
-    Logger::info("cancel timer");
     if (timer) {
         timer->cancel();
     }
-    Logger::info("on_shutdown() complete");
 }
 
 void Server::run(const Configuration &config) {
@@ -94,6 +99,10 @@ void Server::run(const Configuration &config) {
     endpoint.set_open_handler([this](const wspp::connection_hdl &hdl) {
         on_open(hdl);
     });
+    endpoint.set_message_handler([this](
+                                     const wspp::connection_hdl &hdl,
+                                     const wspp::Server::message_ptr &msg
+                                 ) { on_message(hdl, msg); });
     endpoint.set_close_handler([this](const wspp::connection_hdl &hdl) {
         on_close(hdl);
     });

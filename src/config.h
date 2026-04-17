@@ -13,8 +13,26 @@ static constexpr auto CONFIG_PORT = "port";
 /// Configuration file key for the content-type map.
 static constexpr auto CONFIG_CONTENT_TYPES = "content-types";
 
+/// Key specifying the filename regex for a content type.
+static constexpr auto CONFIG_CONTENT_TYPE_FILENAME = "if";
+
+/// Key specifying the content type used for matching filenames.
+static constexpr auto CONFIG_CONTENT_TYPE_RESULT = "then";
+
 /// Configuration file key for the content-type map.
 static constexpr auto CONFIG_CUSTOM_STRUCTURES = "custom-structures";
+
+/// Key that is used to configure the input subsystem.
+static constexpr auto CONFIG_INPUT = "input";
+
+/// Subkey of input that defines binary inputs. If specified, it must map to an
+/// object with semantical mix names from the game as the keys, and
+/// player-friendly input names as the values (the game will show these names in
+/// input hints).
+static constexpr auto CONFIG_INPUT_BINARY = "binary";
+
+/// Like CONFIG_INPUT_BINARY but for floating-point mixes.
+static constexpr auto CONFIG_INPUT_FLOAT = "float";
 
 /// Format specification key that specifies a static value.
 static constexpr auto CONFIG_FORMAT_STATIC = "static";
@@ -64,6 +82,9 @@ struct Configuration {
 
     /// Custom output structures.
     nlohmann::json custom_structures;
+
+    /// Input configuration.
+    nlohmann::json input_configuration;
 };
 
 /// Loads the configuration file. If the file does not exist, an attempt is

@@ -2,6 +2,7 @@
 
 #include <regex>
 
+#include "input.h"
 #include "server.h"
 
 HttpResponse HttpResponse::from_json(const nlohmann::json &json) {
@@ -48,8 +49,15 @@ HttpResponse HttpHandler::handle_static(const Url &url) const {
 }
 
 HttpResponse HttpHandler::handle_rest(const Url &url) const {
+    const auto query = url.get_api_path_elements();
+
+    // Handle input endpoints.
+    auto json = Input::run_query(query);
+    if (!json.is_null()) return HttpResponse::from_json(json);
+
+    // Handle database endpoints.
     if (!database) throw std::runtime_error("missing database");
-    const auto json = database->get_data(url.get_api_path_elements());
+    json = database->get_data(query);
     return HttpResponse::from_json(json);
 }
 

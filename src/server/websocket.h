@@ -29,6 +29,10 @@ class WebSocket {
         /// signaled with a null replacement. If nothing changes at all (above
         /// would yield an empty object), no message is sent at all.
         DELTA,
+
+        /// Input-only websocket. Instead of sending data, the server will send
+        /// acknowledgements of input actions.
+        INPUT,
     } data_type;
 
     /// Database handle.
@@ -55,6 +59,9 @@ class WebSocket {
     /// Sends a JSON object to the client.
     void send(const nlohmann::json &data);
 
+    /// Handles an incoming websocket message.
+    static nlohmann::json receive(const std::string &message);
+
     /// Internal update handler. Does not catch exceptions.
     void update_internal(bool first);
 
@@ -76,6 +83,9 @@ public:
 
     /// Call from Asio context to update the websocket connection.
     void update();
+
+    /// Call from Asio context when a message is received on the websocket.
+    void on_message(const std::string &message);
 
     /// Call from Asio context to close the websocket from the server side, in
     /// response to plugin unload.
