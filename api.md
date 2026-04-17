@@ -292,7 +292,7 @@ camera control at least, that yields very slow movement. The limits are
 arbitrarily set to <-100000,100000> in TruckTel.
 
 At the bottom of this page is a list of semantical input IDs that I manually
-pulled from the default ETS2 1.18 configuration file. For some inputs it's
+pulled from the default ETS2 1.58 configuration file. For some inputs it's
 fairly easy to guess at what they do, for others not so much. You'll have to
 do your own reverse-engineering.
 
@@ -725,7 +725,7 @@ derp.
 | `truck.fuel.warning.factor`                     | float | Fraction of fuel capacity below which the low-fuel warning indicator is lit.                                                              |
 | `truck.adblue`                                  | float | Amount of AdBlue in liters.                                                                                                               |
 | `truck.adblue.capacity`                         | float | AdBlue tank capacity in liters.                                                                                                           |
-| `truck.adblue.consumption.average`              | float | Average AdBlue consumption in liters/km. Defined in the API but doesn't seem to be implemented in ETS2 1.18. TruckTel requests it anyway. |
+| `truck.adblue.consumption.average`              | float | Average AdBlue consumption in liters/km. Defined in the API but doesn't seem to be implemented in ETS2 1.58. TruckTel requests it anyway. |
 | `truck.adblue.warning`                          | bool  | Whether the low-AdBlue warning indicator is lit.                                                                                          |
 | `truck.adblue.warning.factor`                   | float | Fraction of AdBlue capacity below which the low-fuel warning indicator is lit.                                                            |
 | `truck.oil.pressure`                            | float | Oil pressure in psi.                                                                                                                      |
