@@ -82,9 +82,12 @@ private:
     void on_shutdown();
 
 public:
-    /// Starts the server. Call from a worker thread; this will not return until
-    /// the server has shut down.
-    void run(const Configuration &config);
+    /// Initializes the server. Call from a worker thread.
+    void init(const Configuration &config);
+
+    /// Starts the server. Call from the same worker thread that called init().
+    /// This will not return until the server is shut down.
+    void run();
 
     /// Hint from the game thread that new data is available and the server
     /// thread should poll again soon.

@@ -1,3 +1,7 @@
+#pragma once
+
+/// License file contents for TruckTel.
+static constexpr auto TRUCKTEL_LICENSE_CONTENT = R"(
 -------------------------------------------------------------------------------
 TruckTel
 -------------------------------------------------------------------------------
@@ -280,3 +284,7 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+)";
+
+/// Filename that the license is written to.
+static constexpr auto TRUCKTEL_LICENSE_FILENAME = "LICENSE";

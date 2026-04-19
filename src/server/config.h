@@ -14,6 +14,9 @@ static constexpr auto CONFIG_FILENAME = "config.yaml";
 /// Name of the document root subdirectory.
 static constexpr auto CONFIG_DOCUMENT_ROOT_SUBDIR = "www";
 
+/// Name of the file served at the root of a directory.
+static constexpr auto CONFIG_INDEX_FILENAME = "index.html";
+
 /// Configuration file key for the port to listen on.
 static constexpr auto CONFIG_PORT = "port";
 

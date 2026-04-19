@@ -6,6 +6,7 @@
 #include <scssdk_telemetry.h>
 
 #include "input.h"
+#include "license.h"
 #include "logger.h"
 #include "recorder/recorder.h"
 #include "server/server_thread.h"
@@ -76,6 +77,16 @@ static void common_init(const scs_sdk_init_params_v100_t &init_params) {
     // If the trucktel directory doesn't exist yet, create it.
     if (!std::filesystem::is_directory(trucktel_path)) {
         std::filesystem::create_directory(trucktel_path);
+    }
+
+    // If the license file within the trucktel directory doesn't exist yet,
+    // create it.
+    const auto license_path = trucktel_path / TRUCKTEL_LICENSE_FILENAME;
+    if (!std::filesystem::is_regular_file(license_path)) {
+        std::ofstream ofs;
+        ofs.open(license_path.string().c_str());
+        ofs << TRUCKTEL_LICENSE_CONTENT;
+        ofs.close();
     }
 
     // Write to log file within the trucktel directory.

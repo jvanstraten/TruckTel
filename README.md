@@ -119,15 +119,18 @@ What you should probably provide to the user is a zip file containing
           - `index.html` landing page
 
 along with instructions for the player on where to extract this, or an
-installer to automate that. See the [`bundled`](bundled) directory for a
-starting point.
+installer to automate that. This is exactly the contents of the `trucktel.zip`
+files that you can download from the
+[releases](https://github.com/jvanstraten/TruckTel/releases)!
 
-You can either compile the libraries yourself (should be straightforward and
-only need a recent CMake, C++17-capable compiler, and basics like git to let
-FetchContent do its thing) or pull them from a release here. Once you have
-them, you should be able to just treat them as static files that you can
-copypaste around. You shouldn't *need* to fork this repository, because you
-shouldn't need to modify any C++ code.
+If you nevertheless want to build TruckTel yourself, doing so should be
+fairly straightforward. You should only need a recent-ish CMake and a C++
+compiler capable of C++17 (batteries may not be included if said compiler is
+not GCC or MSVC, because those are the ones tested). You'll find the library
+file for your operating system in the CMake build directory. Put it in your
+game's plugin directory, run the game, and the default files should all be
+generated. Note however that you shouldn't need to recompile TruckTel yourself
+if you want to make a mod with it.
 
 The `config.yaml` file specifies which port the plugin should listen on and
 what [content types](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Type)
@@ -162,11 +165,16 @@ I'm using:
  - [Websocket++](https://github.com/chriskohlhoff/asio):
    [custom](https://github.com/zaphoyd/websocketpp/blob/master/COPYING)
 
-None of these are copyleft, but except for Asio they technically require the
-license to be bundled also with binary distributions. Websocket++'s license
-is even explicit about this. So, to be on the excessively safe side, I've
-made a license file for you with all the transitive stuff included in it in
-the [`bundled`](bundled) directory of this repository. You're welcome.
+So putting a less restrictive license than MIT on my own code wouldn't really
+help. None of these are copyleft, but except for Asio they technically require
+the license to be bundled also with binary distributions. Websocket++'s license
+is even explicit about this.
+
+TruckTel's binary [releases](https://github.com/jvanstraten/TruckTel/releases)
+include a full license file with copies of the licenses of all code that was
+bundled with it. The source distributions and the repository itself do not
+include these licenses, because they don't include the code; CMake fetches it
+using FetchContent when configuring.
 
 ## Bugs/debugging?
 

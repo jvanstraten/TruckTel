@@ -78,7 +78,7 @@ void Server::on_shutdown() {
     }
 }
 
-void Server::run(const Configuration &config) {
+void Server::init(const Configuration &config) {
     // Configure the HTTP handler.
     http_handler.configure(
         config.document_root, config.content_types, database
@@ -122,10 +122,11 @@ void Server::run(const Configuration &config) {
     endpoint.listen(config.port);
     endpoint.start_accept();
 
-    // Set the initial timer to start telemetry
+    // Set the initial timer to start telemetry.
     set_timer();
+}
 
-    // Start the ASIO io_service run loop
+void Server::run() {
     endpoint.run();
 }
 
