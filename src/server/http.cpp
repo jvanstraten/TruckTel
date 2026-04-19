@@ -19,7 +19,12 @@ HttpResponse HttpHandler::handle_static(const Url &url) const {
     if (document_root.empty()) throw FileNotFound(url.join_path());
 
     // Serve a static file from the document root.
-    const auto path = url.as_filesystem_path(document_root);
+    auto path = url.as_filesystem_path(document_root);
+
+    // If the requested file does not exist, try 200.html as a fallback.
+    if (!std::filesystem::is_regular_file(path)) {
+        path = document_root / "200.html";
+    }
 
     // Open the file.
     std::ifstream file;
@@ -77,7 +82,7 @@ HttpResponse HttpHandler::handle_error(
 ) const {
     try {
         auto response =
-            handle_static(Url("/error_" + std::to_string(code) + ".html"));
+            handle_static(Url("/" + std::to_string(code) + ".html"));
         response.code = code;
         response.body = std::regex_replace(
             response.body, std::regex("%%MESSAGE%%"), raw_message
