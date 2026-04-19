@@ -128,12 +128,13 @@ default content types, but whether they're sufficient probably depends on
 your app and on how picky the player's browser is.
 
 As stated, the plugin serves static files from the `www` subdirectory. The
-default file for a directory is `index.html`. There are built-in error pages
-for 404 (not found), 426 (websocket upgrade required), and 500 (in case I
-made an oopsie), but you can override them by providing `error_<code>.html`
-files immediately in the `www` directory. Before serving these error pages,
-the server will replace all instances of `%%MESSAGE%%` with the error
-message.
+default file for a directory is `index.html`. If it exists, `/200.html` is
+served as a fallback when a file is not found (except for `/api` endpoints).
+There are built-in error pages for 404 (not found), 426 (websocket upgrade
+required), and 500 (in case I made an oopsie), but you can override them by
+providing `/404.html`, `/426.html`, and/or `/500.html` files immediately.
+Before serving these error pages, the server will replace all instances of
+`%%MESSAGE%%` with the error message.
 
 To actually get data from the game into your app, you can use either REST-like
 queries, websockets, or a mix of both. The server serves these at `/api/rest`
