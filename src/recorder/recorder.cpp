@@ -12,6 +12,7 @@
 #include "api.h"
 #include "json_utils.h"
 #include "logger.h"
+#include "version.h"
 
 std::unique_ptr<Recorder> Recorder::instance{};
 
@@ -191,6 +192,14 @@ Recorder::Recorder(
 )
     : init_params(init_params), gameplay(std::chrono::seconds(10)) {
     // Push basic game information.
+    configuration.push(
+        API_CONFIG_TRUCKTEL,
+        {NamedValue::scalar(API_CONFIG_TRUCKTEL_NAME, TRUCKTEL_FULL_NAME),
+         NamedValue::scalar(
+             API_CONFIG_TRUCKTEL_VERSION,
+             {TRUCKTEL_VERSION_MAJOR, TRUCKTEL_VERSION_MINOR}
+         )}
+    );
     configuration.push(
         API_CONFIG_GAME,
         {NamedValue::scalar(

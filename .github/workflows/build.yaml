@@ -16,6 +16,11 @@ jobs:
 
     steps:
       - uses: actions/checkout@v6
+        with:
+          # We need full history to allow CMake to determine the project
+          # version from git.
+          fetch-depth: 0
+          fetch-tags: true
 
       - name: Create Build Environment
         run: cmake -E make_directory ${{github.workspace}}/build

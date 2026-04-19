@@ -1,6 +1,20 @@
 cmake_minimum_required(VERSION 3.24)
-project(trucktel)
 
+# Determine our own version.
+execute_process(
+        COMMAND git describe --tags --long --always
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        OUTPUT_VARIABLE TRUCKTEL_VERSION_FULL
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+if(TRUCKTEL_VERSION_FULL MATCHES "^v([0-9]+\\.[0-9]+\\.[0-9]+).*")
+    set(TRUCKTEL_VERSION ${CMAKE_MATCH_1})
+else()
+    message(FATAL_ERROR "Failed to get TruckTel version from git")
+endif()
+project(TruckTel VERSION ${TRUCKTEL_VERSION})
+
+# Use C++17. Any higher and WebsocketPP code will give issues.
 set(CMAKE_CXX_STANDARD 17)
 
 # Download information for dependencies.
@@ -35,6 +49,13 @@ FetchContent_GetProperties(websocketpp)
 if(NOT websocketpp_POPULATED)
     FetchContent_Populate(websocketpp QUIET GIT_REPOSITORY "https://github.com/zaphoyd/websocketpp.git" GIT_TAG "${WEBSOCKETPP_VERSION}")
 endif()
+
+# Generate version header file.
+configure_file(
+        src/version.h.in
+        version.h
+        @ONLY
+)
 
 # Build the plugin library. This is what ETS2/ATS should load. Place the .so
 # (or .dll, maybe? I didn't try Windows) in a directory named "plugins" created
@@ -78,6 +99,7 @@ target_link_libraries(trucktel
 )
 target_include_directories(trucktel
         PRIVATE "src"
+        PRIVATE "${CMAKE_CURRENT_BINARY_DIR}"
         PUBLIC "${SCS_SDK_INCLUDE}"
         PRIVATE "${fkyaml_SOURCE_DIR}/include"
         PRIVATE "${asio_SOURCE_DIR}/asio/include"

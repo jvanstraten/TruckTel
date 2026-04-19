@@ -9,16 +9,13 @@
 #include "logger.h"
 #include "recorder/recorder.h"
 #include "server/server_thread.h"
+#include "version.h"
 
 //------------------------------------------------------------------------------
 // Directory structure
 //------------------------------------------------------------------------------
 /// Name of the plugins directory loaded by the game.
 static constexpr auto DIR_PLUGINS = "plugins";
-
-/// Name of TruckTel's working directory, containing the app directories and
-/// log file.
-static constexpr auto DIR_TRUCKTEL = "trucktel";
 
 /// Name of TruckTel's log file.
 static constexpr auto LOG_FILENAME = "log.txt";
@@ -49,6 +46,7 @@ static void common_init(const scs_sdk_init_params_v100_t &init_params) {
     // Initialize the logger. This won't do anything if initialize_input()
     // already initialized the logger.
     Logger::init(init_params.log);
+    Logger::info("Loading %s", TRUCKTEL_FULL_NAME);
 
     // The working directory for ETS2 seems to be the directory its
     // executable is placed in, so the path below should point to the
@@ -73,7 +71,7 @@ static void common_init(const scs_sdk_init_params_v100_t &init_params) {
     // everything other than the plugin itself into our own directory. This
     // will hold the log file, configuration, static content for the server,
     // etc.
-    trucktel_path = plugin_path / DIR_TRUCKTEL;
+    trucktel_path = plugin_path / TRUCKTEL_DIRECTORY_NAME;
 
     // If the trucktel directory doesn't exist yet, create it.
     if (!std::filesystem::is_directory(trucktel_path)) {
