@@ -869,295 +869,323 @@ Event called when player uses a ferry or train.
 
 ### Semantical inputs
 
-Since there's no game documentation and I haven't tried the vast majority of
-these, most descriptions are empty. For the inputs without description, the
-type is a guess based on the mix expression in the default game configuration,
-and it's unknown if the input is functional at all.
+I haven't found documentation for these. The table is based on the
+`controls.sii` file that the game emits and some reverse-engineering. An input
+not having a description means I haven't positively identified a matching key
+binding and/or haven't tried it. In some cases, what the input is for is pretty
+clear from surrounding inputs; for this reason, the inputs are listed in the
+order that the game lists them, even though that makes the grouping
+questionable.
+
+Nomenclature:
+
+ - "Key binding": matches the behavior of the named in-game key binding.
+   Category is prefixed, item is suffixed. These usually have toggle/cycle
+   behaviors, so for automation, you need to know the current game state to
+   know how many times to press it to get to a desired state.
+ - "Button": expected to be bound to a button. Unlike a switch, a button is
+   monostable, i.e. it must be physically held down for the control to stay
+   active. Usually a `press` action is enough.
+ - "N-way switch": expected to be bound to a switch with N positions. For N=2,
+   a single input is used, which must be held down with `hold` and released
+   with `release` to change state. For N>2, usually each position has its own
+   input, in which case a `press` action is usually enough to update the
+   position.
+
+Some switches in the truck don't seem to have switch bindings, only the normal
+key bindings. If you want to model a switch, you'll have to monitor the state
+of the switch as reported by the telemetry API and send a press command only
+when the user toggles your switch and the in-game state doesn't match the new
+state.
 
 Trying out inputs and have descriptions to share? Pull requests welcome!
 
-| Input ID       | Type   | Description                                 |
-|----------------|--------|---------------------------------------------|
-| `j_left`       | binary |                                             |
-| `j_right`      | binary |                                             |
-| `j_up`         | binary |                                             |
-| `j_down`       | binary |                                             |
-| `selectfcs`    | binary |                                             |
-| `back`         | binary |                                             |
-| `skip`         | binary |                                             |
-| `scrol_up`     | binary |                                             |
-| `scrol_dwn`    | binary |                                             |
-| `mapzoom_in`   | binary |                                             |
-| `mapzoom_out`  | binary |                                             |
-| `trs_zoom_in`  | binary |                                             |
-| `trs_zoom_out` | binary |                                             |
-| `joy_nav_prv`  | binary |                                             |
-| `joy_nav_nxt`  | binary |                                             |
-| `joy_sec_prv`  | binary |                                             |
-| `joy_sec_nxt`  | binary |                                             |
-| `scroll_j_x`   | float  |                                             |
-| `scroll_j_y`   | float  |                                             |
-| `shortcut_1`   | binary |                                             |
-| `shortcut_1h`  | binary |                                             |
-| `shortcut_2`   | binary |                                             |
-| `shortcut_2h`  | binary |                                             |
-| `shortcut_3`   | binary |                                             |
-| `shortcut_3h`  | binary |                                             |
-| `shortcut_4`   | binary |                                             |
-| `shortcut_4h`  | binary |                                             |
-| `pause`        | binary |                                             |
-| `screenshot`   | binary |                                             |
-| `cam1`         | binary |                                             |
-| `cam2`         | binary |                                             |
-| `cam3`         | binary |                                             |
-| `cam4`         | binary |                                             |
-| `cam5`         | binary |                                             |
-| `cam6`         | binary |                                             |
-| `cam7`         | binary |                                             |
-| `cam8`         | binary |                                             |
-| `camcycle`     | binary |                                             |
-| `camreset`     | binary |                                             |
-| `camrotate`    | binary |                                             |
-| `camzoomin`    | binary |                                             |
-| `camzoomout`   | binary |                                             |
-| `camzoom`      | binary |                                             |
-| `camfwd`       | binary |                                             |
-| `camback`      | binary |                                             |
-| `camleft`      | binary |                                             |
-| `camright`     | binary |                                             |
-| `camup`        | binary |                                             |
-| `camdown`      | binary |                                             |
-| `lookleft`     | binary |                                             |
-| `lookright`    | binary |                                             |
-| `camlr`        | float  | Controls camera yaw *rate*, positive right. |
-| `camud`        | float  |                                             |
-| `j_cam_lk_lr`  | float  |                                             |
-| `j_cam_lk_ud`  | float  |                                             |
-| `j_cam_mv_lr`  | float  |                                             |
-| `j_cam_mv_ud`  | float  |                                             |
-| `j_trzoom_in`  | binary |                                             |
-| `j_trzoom_out` | binary |                                             |
-| `j_tr_cam_res` | binary |                                             |
-| `j_tr_cam_swi` | binary |                                             |
-| `j_tr_lights`  | binary |                                             |
-| `j_tr_fullsc`  | binary |                                             |
-| `j_tr_att_tra` | binary |                                             |
-| `j_mappan_x`   | float  |                                             |
-| `j_mappan_y`   | float  |                                             |
-| `j_mapzom_in`  | binary |                                             |
-| `j_mapzom_out` | binary |                                             |
-| `lookpos1`     | binary |                                             |
-| `lookpos2`     | binary |                                             |
-| `lookpos3`     | binary |                                             |
-| `lookpos4`     | binary |                                             |
-| `lookpos5`     | binary |                                             |
-| `lookpos6`     | binary |                                             |
-| `lookpos7`     | binary |                                             |
-| `lookpos8`     | binary |                                             |
-| `lookpos9`     | binary |                                             |
-| `looksteer`    | binary |                                             |
-| `lookblink`    | binary |                                             |
-| `activate`     | binary |                                             |
-| `menu`         | binary |                                             |
-| `engine`       | binary |                                             |
-| `engineelect`  | binary |                                             |
-| `ignitionoff`  | binary |                                             |
-| `ignitionon`   | binary |                                             |
-| `ignitionstrt` | binary |                                             |
-| `attach`       | binary |                                             |
-| `frontsuspup`  | binary |                                             |
-| `frontsuspdwn` | binary |                                             |
-| `rearsuspup`   | binary |                                             |
-| `rearsuspdwn`  | binary |                                             |
-| `suspreset`    | binary |                                             |
-| `horn`         | binary |                                             |
-| `airhorn`      | binary |                                             |
-| `lighthorn`    | binary |                                             |
-| `beacon`       | binary |                                             |
-| `motorbrake`   | binary |                                             |
-| `engbraketog`  | binary |                                             |
-| `engbrakeup`   | binary |                                             |
-| `engbrakedwn`  | binary |                                             |
-| `trailerbrake` | binary |                                             |
-| `retarderup`   | binary |                                             |
-| `retarderdown` | binary |                                             |
-| `retarder0`    | binary |                                             |
-| `retarder1`    | binary |                                             |
-| `retarder2`    | binary |                                             |
-| `retarder3`    | binary |                                             |
-| `retarder4`    | binary |                                             |
-| `retarder5`    | binary |                                             |
-| `liftaxle`     | binary |                                             |
-| `liftaxlet`    | binary |                                             |
-| `slideaxlefwd` | binary |                                             |
-| `slideaxlebwd` | binary |                                             |
-| `slideaxleman` | binary |                                             |
-| `trlrsuspup`   | binary |                                             |
-| `trlrsuspdwn`  | binary |                                             |
-| `diflock`      | binary |                                             |
-| `rwinopen`     | binary |                                             |
-| `rwinclose`    | binary |                                             |
-| `lwinopen`     | binary |                                             |
-| `lwinclose`    | binary |                                             |
-| `engbrakeauto` | binary |                                             |
-| `retarderauto` | binary |                                             |
-| `embrake`      | binary |                                             |
-| `laneassmode`  | binary |                                             |
-| `tranpwrmode`  | binary |                                             |
-| `parkingbrake` | binary |                                             |
-| `handbrake`    | binary |                                             |
-| `wipers`       | binary |                                             |
-| `wipersback`   | binary |                                             |
-| `wipers0`      | binary |                                             |
-| `wipers1`      | binary |                                             |
-| `wipers2`      | binary |                                             |
-| `wipers3`      | binary |                                             |
-| `wipers4`      | binary |                                             |
-| `cruiectrl`    | binary |                                             |
-| `cruiectrlinc` | binary |                                             |
-| `cruiectrldec` | binary |                                             |
-| `cruiectrlres` | binary |                                             |
-| `accmode`      | binary |                                             |
-| `laneassist`   | binary |                                             |
-| `light`        | binary |                                             |
-| `lightoff`     | binary |                                             |
-| `lightpark`    | binary |                                             |
-| `lighton`      | binary |                                             |
-| `hblight`      | binary |                                             |
-| `lblinker`     | binary | Left blinker toggle button.                 |
-| `lblinkerh`    | binary | Left blinker switch.                        |
-| `rblinker`     | binary | Right blinker toggle button.                |
-| `rblinkerh`    | binary | Right blinker switch.                       |
-| `flasher4way`  | binary |                                             |
-| `showmirrors`  | binary |                                             |
-| `showhud`      | binary |                                             |
-| `navmap`       | binary |                                             |
-| `photo_mode`   | binary |                                             |
-| `quicksave`    | binary |                                             |
-| `quickload`    | binary |                                             |
-| `acaquickr`    | binary |                                             |
-| `radio`        | binary |                                             |
-| `radionext`    | binary |                                             |
-| `radioprev`    | binary |                                             |
-| `radioup`      | binary |                                             |
-| `radiodown`    | binary |                                             |
-| `display`      | binary |                                             |
-| `quickpark`    | binary |                                             |
-| `dashmapzoom`  | binary |                                             |
-| `tripreset`    | binary |                                             |
-| `sb_activate`  | binary |                                             |
-| `sb_swap`      | binary |                                             |
-| `infotainment` | binary |                                             |
-| `mapcenter`    | binary |                                             |
-| `photores`     | binary |                                             |
-| `photomove`    | binary |                                             |
-| `phototake`    | binary |                                             |
-| `photofwd`     | binary |                                             |
-| `photobwd`     | binary |                                             |
-| `photoleft`    | binary |                                             |
-| `photoright`   | binary |                                             |
-| `photoup`      | binary |                                             |
-| `photodown`    | binary |                                             |
-| `photorolll`   | binary |                                             |
-| `photorollr`   | binary |                                             |
-| `photosman`    | binary |                                             |
-| `photo_opts`   | binary |                                             |
-| `photosnap`    | binary |                                             |
-| `photo_hctrl`  | binary |                                             |
-| `photonames`   | binary |                                             |
-| `photozoomout` | binary |                                             |
-| `photozoomin`  | binary |                                             |
-| `phot_z_j_out` | binary |                                             |
-| `phot_z_j_in`  | binary |                                             |
-| `album_pgup`   | binary |                                             |
-| `album_pgdn`   | binary |                                             |
-| `album_itup`   | binary |                                             |
-| `album_itdn`   | binary |                                             |
-| `album_itlf`   | binary |                                             |
-| `album_itrg`   | binary |                                             |
-| `album_ithm`   | binary |                                             |
-| `album_iten`   | binary |                                             |
-| `album_itac`   | binary |                                             |
-| `album_itop`   | binary |                                             |
-| `album_itdl`   | binary |                                             |
-| `camwalk_for`  | binary |                                             |
-| `camwalk_back` | binary |                                             |
-| `camwalk_righ` | binary |                                             |
-| `camwalk_left` | binary |                                             |
-| `camwalk_run`  | binary |                                             |
-| `camwalk_jump` | binary |                                             |
-| `camwalk_crou` | binary |                                             |
-| `camwalk_lr`   | float  |                                             |
-| `camwalk_ud`   | float  |                                             |
-| `gearup`       | binary |                                             |
-| `geardown`     | binary |                                             |
-| `gear0`        | binary |                                             |
-| `geardrive`    | binary |                                             |
-| `gearreverse`  | binary |                                             |
-| `gearuphint`   | binary |                                             |
-| `geardownhint` | binary |                                             |
-| `transemi`     | binary |                                             |
-| `drive`        | binary |                                             |
-| `reverse`      | binary |                                             |
-| `cmirrorsel`   | binary |                                             |
-| `fmirrorsel`   | binary |                                             |
-| `mirroryawl`   | binary |                                             |
-| `mirroryawr`   | binary |                                             |
-| `mirrorpitu`   | binary |                                             |
-| `mirrorpitl`   | binary |                                             |
-| `mirrorreset`  | binary |                                             |
-| `quicksel1`    | binary |                                             |
-| `quicksel2`    | binary |                                             |
-| `quicksel3`    | binary |                                             |
-| `quicksel4`    | binary |                                             |
-| `quicksel5`    | binary |                                             |
-| `quicksel6`    | binary |                                             |
-| `quicksel7`    | binary |                                             |
-| `quicksel8`    | binary |                                             |
-| `mpptt`        | binary |                                             |
-| `replayhidec`  | binary |                                             |
-| `gearsel1on`   | binary |                                             |
-| `gearsel1off`  | binary |                                             |
-| `gearsel1tgl`  | binary |                                             |
-| `gearsel2on`   | binary |                                             |
-| `gearsel2off`  | binary |                                             |
-| `gearsel2tgl`  | binary |                                             |
-| `gear1`        | binary |                                             |
-| `gear2`        | binary |                                             |
-| `gear3`        | binary |                                             |
-| `gear4`        | binary |                                             |
-| `gear5`        | binary |                                             |
-| `gear6`        | binary |                                             |
-| `gear7`        | binary |                                             |
-| `gear8`        | binary |                                             |
-| `gear9`        | binary |                                             |
-| `gear10`       | binary |                                             |
-| `gear11`       | binary |                                             |
-| `gear12`       | binary |                                             |
-| `gear13`       | binary |                                             |
-| `gear14`       | binary |                                             |
-| `gear15`       | binary |                                             |
-| `gear16`       | binary |                                             |
-| `adjuster`     | binary |                                             |
-| `advmouse`     | binary |                                             |
-| `advetamode`   | binary |                                             |
-| `gar_man`      | binary |                                             |
-| `advzoomin`    | binary |                                             |
-| `advzoomout`   | binary |                                             |
-| `advoptions`   | binary |                                             |
-| `services`     | binary |                                             |
-| `assistact1`   | binary |                                             |
-| `assistact2`   | binary |                                             |
-| `assistact3`   | binary |                                             |
-| `assistact4`   | binary |                                             |
-| `assistact5`   | binary |                                             |
-| `adj_seats`    | binary |                                             |
-| `adj_mirrors`  | binary |                                             |
-| `adj_lights`   | binary |                                             |
-| `adj_uimirror` | binary |                                             |
-| `chat_act`     | binary |                                             |
-| `quick_chat`   | binary |                                             |
-| `cycl_zoom`    | binary |                                             |
-| `name_tags`    | binary |                                             |
-| `headreset`    | binary |                                             |
-| `menustereo`   | binary |                                             |
+| Input ID       | Type   | Description                                                                                                                                                            |
+|----------------|--------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `j_left`       | binary |                                                                                                                                                                        |
+| `j_right`      | binary |                                                                                                                                                                        |
+| `j_up`         | binary |                                                                                                                                                                        |
+| `j_down`       | binary |                                                                                                                                                                        |
+| `selectfcs`    | binary |                                                                                                                                                                        |
+| `back`         | binary |                                                                                                                                                                        |
+| `skip`         | binary |                                                                                                                                                                        |
+| `scrol_up`     | binary |                                                                                                                                                                        |
+| `scrol_dwn`    | binary |                                                                                                                                                                        |
+| `mapzoom_in`   | binary |                                                                                                                                                                        |
+| `mapzoom_out`  | binary |                                                                                                                                                                        |
+| `trs_zoom_in`  | binary |                                                                                                                                                                        |
+| `trs_zoom_out` | binary |                                                                                                                                                                        |
+| `joy_nav_prv`  | binary |                                                                                                                                                                        |
+| `joy_nav_nxt`  | binary |                                                                                                                                                                        |
+| `joy_sec_prv`  | binary |                                                                                                                                                                        |
+| `joy_sec_nxt`  | binary |                                                                                                                                                                        |
+| `scroll_j_x`   | float  |                                                                                                                                                                        |
+| `scroll_j_y`   | float  |                                                                                                                                                                        |
+| `shortcut_1`   | binary |                                                                                                                                                                        |
+| `shortcut_1h`  | binary |                                                                                                                                                                        |
+| `shortcut_2`   | binary |                                                                                                                                                                        |
+| `shortcut_2h`  | binary |                                                                                                                                                                        |
+| `shortcut_3`   | binary |                                                                                                                                                                        |
+| `shortcut_3h`  | binary |                                                                                                                                                                        |
+| `shortcut_4`   | binary |                                                                                                                                                                        |
+| `shortcut_4h`  | binary |                                                                                                                                                                        |
+| `pause`        | binary |                                                                                                                                                                        |
+| `screenshot`   | binary | Quick actions key binding: screenshot.                                                                                                                                 |
+| `cam1`         | binary | Camera controls key binding: interior camera.                                                                                                                          |
+| `cam2`         | binary | Camera controls key binding: chasing camera.                                                                                                                           |
+| `cam3`         | binary | Camera controls key binding: top-down camera.                                                                                                                          |
+| `cam4`         | binary | Camera controls key binding: roof camera.                                                                                                                              |
+| `cam5`         | binary | Camera controls key binding: lean out camera.                                                                                                                          |
+| `cam6`         | binary | Camera controls key binding: bumper camera.                                                                                                                            |
+| `cam7`         | binary | Camera controls key binding: on-wheel camera.                                                                                                                          |
+| `cam8`         | binary | Camera controls key binding: drive-by camera.                                                                                                                          |
+| `camcycle`     | binary | Camera controls key binding: next camera.                                                                                                                              |
+| `camreset`     | binary | Camera controls key binding: reset camera.                                                                                                                             |
+| `camrotate`    | binary | Auxiliary cameras key binding: rotate camera (in mouse control).                                                                                                       |
+| `camzoomin`    | binary |                                                                                                                                                                        |
+| `camzoomout`   | binary |                                                                                                                                                                        |
+| `camzoom`      | binary | Auxiliary cameras key binding: zoom interior camera.                                                                                                                   |
+| `camfwd`       | binary |                                                                                                                                                                        |
+| `camback`      | binary |                                                                                                                                                                        |
+| `camleft`      | binary |                                                                                                                                                                        |
+| `camright`     | binary |                                                                                                                                                                        |
+| `camup`        | binary |                                                                                                                                                                        |
+| `camdown`      | binary |                                                                                                                                                                        |
+| `lookleft`     | binary | Camera controls key binding: look left.                                                                                                                                |
+| `lookright`    | binary | Camera controls key binding: look right.                                                                                                                               |
+| `camlr`        | float  | Controls camera yaw *rate*, positive right.                                                                                                                            |
+| `camud`        | float  |                                                                                                                                                                        |
+| `j_cam_lk_lr`  | float  |                                                                                                                                                                        |
+| `j_cam_lk_ud`  | float  |                                                                                                                                                                        |
+| `j_cam_mv_lr`  | float  |                                                                                                                                                                        |
+| `j_cam_mv_ud`  | float  |                                                                                                                                                                        |
+| `j_trzoom_in`  | binary |                                                                                                                                                                        |
+| `j_trzoom_out` | binary |                                                                                                                                                                        |
+| `j_tr_cam_res` | binary |                                                                                                                                                                        |
+| `j_tr_cam_swi` | binary |                                                                                                                                                                        |
+| `j_tr_lights`  | binary |                                                                                                                                                                        |
+| `j_tr_fullsc`  | binary |                                                                                                                                                                        |
+| `j_tr_att_tra` | binary |                                                                                                                                                                        |
+| `j_mappan_x`   | float  |                                                                                                                                                                        |
+| `j_mappan_y`   | float  |                                                                                                                                                                        |
+| `j_mapzom_in`  | binary |                                                                                                                                                                        |
+| `j_mapzom_out` | binary |                                                                                                                                                                        |
+| `lookpos1`     | binary | Camera controls key binding: interior look forward.                                                                                                                    |
+| `lookpos2`     | binary | Camera controls key binding: interior look up right.                                                                                                                   |
+| `lookpos3`     | binary | Camera controls key binding: interior look up left.                                                                                                                    |
+| `lookpos4`     | binary | Camera controls key binding: interior look right.                                                                                                                      |
+| `lookpos5`     | binary | Camera controls key binding: interior look left.                                                                                                                       |
+| `lookpos6`     | binary | Camera controls key binding: interior look up middle.                                                                                                                  |
+| `lookpos7`     | binary |                                                                                                                                                                        |
+| `lookpos8`     | binary |                                                                                                                                                                        |
+| `lookpos9`     | binary |                                                                                                                                                                        |
+| `looksteer`    | binary | Auxiliary cameras key binding: steering based camera rotation.                                                                                                         |
+| `lookblink`    | binary | Auxiliary cameras key binding: blinker based camera rotation.                                                                                                          |
+| `steering`     | float  | Steering axis.                                                                                                                                                         |
+| `aforward`     | float  | Throttle axis.                                                                                                                                                         |
+| `abackward`    | float  | Brake axis.                                                                                                                                                            |
+| `clutch`       | float  | Clutch axis.                                                                                                                                                           |
+| `activate`     | binary | Quick actions key binding: activate.                                                                                                                                   |
+| `menu`         | binary | Quick actions key binding: menu.                                                                                                                                       |
+| `engine`       | binary | Truck key binding: start/stop engine.                                                                                                                                  |
+| `engineelect`  | binary | Truck key binding: start/stop engine electricity.                                                                                                                      |
+| `ignitionoff`  | binary | Truck ignition 3-way switch: off.                                                                                                                                      |
+| `ignitionon`   | binary | Truck ignition 3-way switch: on.                                                                                                                                       |
+| `ignitionstrt` | binary | Truck ignition 3-way switch: start. If released, game reverts to the "on" position. Needs to be held sufficiently long for the engine to start, `press` is not enough. |
+| `attach`       | binary | Trailer key binding: trailer attach/detach.                                                                                                                            |
+| `frontsuspup`  | binary | Suspension key binding: front suspension up.                                                                                                                           |
+| `frontsuspdwn` | binary | Suspension key binding: front suspension down.                                                                                                                         |
+| `rearsuspup`   | binary | Suspension key binding: rear suspension up.                                                                                                                            |
+| `rearsuspdwn`  | binary | Suspension key binding: rear suspension down.                                                                                                                          |
+| `suspreset`    | binary | Suspension key binding: suspension reset.                                                                                                                              |
+| `horn`         | binary | Truck key binding: horn.                                                                                                                                               |
+| `airhorn`      | binary | Truck key binding: air horn.                                                                                                                                           |
+| `lighthorn`    | binary | Truck key binding: light horn.                                                                                                                                         |
+| `beacon`       | binary | Truck key binding: beacon.                                                                                                                                             |
+| `motorbrake`   | binary | Auxiliary brakes key binding: engine brake.                                                                                                                            |
+| `engbraketog`  | binary | Auxiliary brakes key binding: engine brake toggle.                                                                                                                     |
+| `engbrakeup`   | binary | Auxiliary brakes key binding: engine brake increase.                                                                                                                   |
+| `engbrakedwn`  | binary | Auxiliary brakes key binding: engine brake decrease.                                                                                                                   |
+| `trailerbrake` | binary | Trailer key binding: trailer brake.                                                                                                                                    |
+| `retarderup`   | binary | Auxiliary brakes key binding: retarder increase.                                                                                                                       |
+| `retarderdown` | binary | Auxiliary brakes key binding: retarder decrease.                                                                                                                       |
+| `retarder0`    | binary |                                                                                                                                                                        |
+| `retarder1`    | binary |                                                                                                                                                                        |
+| `retarder2`    | binary |                                                                                                                                                                        |
+| `retarder3`    | binary |                                                                                                                                                                        |
+| `retarder4`    | binary |                                                                                                                                                                        |
+| `retarder5`    | binary |                                                                                                                                                                        |
+| `liftaxle`     | binary | Truck key binding: lift/drop axle.                                                                                                                                     |
+| `liftaxlet`    | binary | Trailer key binding: lift/drop trailer axle.                                                                                                                           |
+| `slideaxlefwd` | binary |                                                                                                                                                                        |
+| `slideaxlebwd` | binary |                                                                                                                                                                        |
+| `slideaxleman` | binary | Trailer key binding: toggle manual trailer axle adjustment.                                                                                                            |
+| `trlrsuspup`   | binary | Suspension key binding: trailer suspension up.                                                                                                                         |
+| `trlrsuspdwn`  | binary | Suspension key binding: trailer suspension down.                                                                                                                       |
+| `diflock`      | binary | Truck key binding: differential lock.                                                                                                                                  |
+| `rwinopen`     | binary | Interior key binding: open right window.                                                                                                                               |
+| `rwinclose`    | binary | Interior key binding: close right window.                                                                                                                              |
+| `lwinopen`     | binary | Interior key binding: open left window.                                                                                                                                |
+| `lwinclose`    | binary | Interior key binding: close left window.                                                                                                                               |
+| `engbrakeauto` | binary | Auxiliary brakes key binding: automatic engine brake.                                                                                                                  |
+| `retarderauto` | binary | Auxiliary brakes key binding: automatic retarder.                                                                                                                      |
+| `embrake`      | binary | Assistants key binding: emergency brake.                                                                                                                               |
+| `laneassmode`  | binary | Assistants key binding: lane assistant mode.                                                                                                                           |
+| `tranpwrmode`  | binary | Assistants key binding: adaptive automatic transmission mode.                                                                                                          |
+| `parkingbrake` | binary | Truck key binding: parking brake.                                                                                                                                      |
+| `handbrake`    | binary | Truck parking brake 2-way switch.                                                                                                                                      |
+| `wipers`       | binary | Truck key binding: wipers.                                                                                                                                             |
+| `wipersback`   | binary | Truck key binding: wipers back.                                                                                                                                        |
+| `wipers0`      | binary | Truck wiper 5-way switch: off.                                                                                                                                         |
+| `wipers1`      | binary | Truck wiper 5-way switch: level 1 (interval).                                                                                                                          |
+| `wipers2`      | binary | Truck wiper 5-way switch: level 2 (on).                                                                                                                                |
+| `wipers3`      | binary | Truck wiper 5-way switch: level 3 (high).                                                                                                                              |
+| `wipers4`      | binary | Truck wiper 5-way switch: level 4.                                                                                                                                     |
+| `cruiectrl`    | binary | Assistants key binding: cruise control.                                                                                                                                |
+| `cruiectrlinc` | binary | Assistants key binding: cruise control speed increase.                                                                                                                 |
+| `cruiectrldec` | binary | Assistants key binding: cruise control speed decrease.                                                                                                                 |
+| `cruiectrlres` | binary | Assistants key binding: cruise control resume.                                                                                                                         |
+| `accmode`      | binary | Assistants key binding: adaptive cruise control mode.                                                                                                                  |
+| `laneassist`   | binary | Assistants key binding: lane keeping assistance.                                                                                                                       |
+| `light`        | binary | Truck key binding: light modes.                                                                                                                                        |
+| `lightoff`     | binary | Truck light 3-way switch: off.                                                                                                                                         |
+| `lightpark`    | binary | Truck light 3-way switch: parking lights.                                                                                                                              |
+| `lighton`      | binary | Truck light 3-way switch: on.                                                                                                                                          |
+| `hblight`      | binary | Truck key binding: high beams. There does not seem to be a switch input for this.                                                                                      |
+| `lblinker`     | binary | Truck key binding: left-turn indicator.                                                                                                                                |
+| `rblinker`     | binary | Truck key binding: right-turn indicator.                                                                                                                               |
+| `lblinkerh`    | binary | Truck turn indicator 3-way switch: left. Must be held; release both to return to off state.                                                                            |
+| `rblinkerh`    | binary | Truck turn indicator 3-way switch: right. Must be held; release both to return to off state.                                                                           |
+| `flasher4way`  | binary | Truck key binding: hazard warning. There does not seem to be a switch input for this.                                                                                  |
+| `showmirrors`  | binary | HUD key binding: show/hide side mirrors on-screen.                                                                                                                     |
+| `showhud`      | binary | HUD key binding: show/hide HUD widgets.                                                                                                                                |
+| `navmap`       | binary | Quick actions key binding: world map.                                                                                                                                  |
+| `photo_mode`   | binary | Photo mode key binding: photo mode activation (while driving).                                                                                                         |
+| `quicksave`    | binary | Quick actions key binding: quick save.                                                                                                                                 |
+| `quickload`    | binary | Quick actions key binding: quick load.                                                                                                                                 |
+| `acaquickr`    | binary | Quick actions key binding: driving academy quick restart.                                                                                                              |
+| `radio`        | binary | Radio key binding: audio player.                                                                                                                                       |
+| `radionext`    | binary | Radio key binding: audio player next favourite.                                                                                                                        |
+| `radioprev`    | binary | Radio key binding: audio player previous favourite.                                                                                                                    |
+| `radioup`      | binary | Radio key binding: audio player volume up.                                                                                                                             |
+| `radiodown`    | binary | Radio key binding: audio player volume down.                                                                                                                           |
+| `display`      | binary | Interior key binding: dashboard display mode.                                                                                                                          |
+| `quickpark`    | binary |                                                                                                                                                                        |
+| `dashmapzoom`  | binary | Interior key binding: navigation zoom mode.                                                                                                                            |
+| `tripreset`    | binary | Interior key binding: trip info reset.                                                                                                                                 |
+| `sb_activate`  | binary | Convoy key binding: overlay activation.                                                                                                                                |
+| `sb_swap`      | binary |                                                                                                                                                                        |
+| `infotainment` | binary | Interior key binding: infotainment display mode.                                                                                                                       |
+| `mapcenter`    | binary |                                                                                                                                                                        |
+| `photores`     | binary | Photo mode key binding: reset photo settings.                                                                                                                          |
+| `photomove`    | binary | (Hidden binding by game: right mouse button.)                                                                                                                          |
+| `phototake`    | binary | (Hidden binding by game: left mouse button.)                                                                                                                           |
+| `photofwd`     | binary | Photo mode key binding: camera: forward.                                                                                                                               |
+| `photobwd`     | binary | Photo mode key binding: camera: backward.                                                                                                                              |
+| `photoleft`    | binary | Photo mode key binding: camera: left.                                                                                                                                  |
+| `photoright`   | binary | Photo mode key binding: camera: right.                                                                                                                                 |
+| `photoup`      | binary | Photo mode key binding: camera: up.                                                                                                                                    |
+| `photodown`    | binary | Photo mode key binding: camera: down.                                                                                                                                  |
+| `photorolll`   | binary | Photo mode key binding: camera: roll left.                                                                                                                             |
+| `photorollr`   | binary | Photo mode key binding: camera: roll right.                                                                                                                            |
+| `photosman`    | binary | Photo mode key binding: open gallery.                                                                                                                                  |
+| `photo_opts`   | binary | Photo mode key binding: toggle photo settings.                                                                                                                         |
+| `photosnap`    | binary | Photo mode key binding: take picture.                                                                                                                                  |
+| `photo_hctrl`  | binary | Photo mode key binding: toggle controls.                                                                                                                               |
+| `photonames`   | binary | Photo mode key binding: toggle player names.                                                                                                                           |
+| `photozoomout` | binary | (Hidden binding by game: mouse wheel down).                                                                                                                            |
+| `photozoomin`  | binary | (Hidden binding by game: mouse wheel up).                                                                                                                              |
+| `phot_z_j_out` | binary |                                                                                                                                                                        |
+| `phot_z_j_in`  | binary |                                                                                                                                                                        |
+| `album_pgup`   | binary |                                                                                                                                                                        |
+| `album_pgdn`   | binary |                                                                                                                                                                        |
+| `album_itup`   | binary |                                                                                                                                                                        |
+| `album_itdn`   | binary |                                                                                                                                                                        |
+| `album_itlf`   | binary |                                                                                                                                                                        |
+| `album_itrg`   | binary |                                                                                                                                                                        |
+| `album_ithm`   | binary |                                                                                                                                                                        |
+| `album_iten`   | binary |                                                                                                                                                                        |
+| `album_itac`   | binary |                                                                                                                                                                        |
+| `album_itop`   | binary |                                                                                                                                                                        |
+| `album_itdl`   | binary |                                                                                                                                                                        |
+| `camwalk_for`  | binary | Walk mode key binding: walk mode forward.                                                                                                                              |
+| `camwalk_back` | binary | Walk mode key binding: walk mode back.                                                                                                                                 |
+| `camwalk_righ` | binary | Walk mode key binding: walk mode right.                                                                                                                                |
+| `camwalk_left` | binary | Walk mode key binding: walk mode left.                                                                                                                                 |
+| `camwalk_run`  | binary | Walk mode key binding: walk mode run.                                                                                                                                  |
+| `camwalk_jump` | binary |                                                                                                                                                                        |
+| `camwalk_crou` | binary | Walk mode key binding: walk mode crouch.                                                                                                                               |
+| `camwalk_lr`   | float  |                                                                                                                                                                        |
+| `camwalk_ud`   | float  |                                                                                                                                                                        |
+| `gearup`       | binary | Transmission key binding: shift up.                                                                                                                                    |
+| `geardown`     | binary | Transmission key binding: shift down.                                                                                                                                  |
+| `gear0`        | binary | Transmission key binding: shift to neutral.                                                                                                                            |
+| `geardrive`    | binary | Transmission key binding: shift to drive.                                                                                                                              |
+| `gearreverse`  | binary | Transmission key binding: shift to reverse.                                                                                                                            |
+| `gearuphint`   | binary | Transmission key binding: shift up hint.                                                                                                                               |
+| `geardownhint` | binary | Transmission key binding: shift down hint.                                                                                                                             |
+| `transemi`     | binary | Transmission key binding: gearbox switch automatic/sequential.                                                                                                         |
+| `drive`        | binary | Transmission 3-way switch: drive. Must be held; release to go to neutral.                                                                                              |
+| `reverse`      | binary | Transmission 3-way switch: reverse. Must be held; release to go to neutral.                                                                                            |
+| `cmirrorsel`   | binary |                                                                                                                                                                        |
+| `fmirrorsel`   | binary |                                                                                                                                                                        |
+| `mirroryawl`   | binary |                                                                                                                                                                        |
+| `mirroryawr`   | binary |                                                                                                                                                                        |
+| `mirrorpitu`   | binary |                                                                                                                                                                        |
+| `mirrorpitl`   | binary |                                                                                                                                                                        |
+| `mirrorreset`  | binary |                                                                                                                                                                        |
+| `quicksel1`    | binary |                                                                                                                                                                        |
+| `quicksel2`    | binary |                                                                                                                                                                        |
+| `quicksel3`    | binary |                                                                                                                                                                        |
+| `quicksel4`    | binary |                                                                                                                                                                        |
+| `quicksel5`    | binary |                                                                                                                                                                        |
+| `quicksel6`    | binary |                                                                                                                                                                        |
+| `quicksel7`    | binary |                                                                                                                                                                        |
+| `quicksel8`    | binary |                                                                                                                                                                        |
+| `mpptt`        | binary | Convoy key binding: push to talk.                                                                                                                                      |
+| `replayhidec`  | binary |                                                                                                                                                                        |
+| `gearsel1on`   | binary | H-shifter range/split toggle 1 on button.                                                                                                                              |
+| `gearsel1off`  | binary | H-shifter range/split toggle 1 off button.                                                                                                                             |
+| `gearsel1tgl`  | binary | H-shifter binding: shifter toggle 1.                                                                                                                                   |
+| `gearsel2on`   | binary | H-shifter range/split toggle 2 on button.                                                                                                                              |
+| `gearsel2off`  | binary | H-shifter range/split toggle 2 off button.                                                                                                                             |
+| `gearsel2tgl`  | binary | H-shifter binding: shifter toggle 2.                                                                                                                                   |
+| `gear1`        | binary | H-shifter binding: shifter reverse position.                                                                                                                           |
+| `gear2`        | binary | H-shifter binding: shifter position 1. Note mismatch in ID numbering scheme!                                                                                           |
+| `gear3`        | binary | H-shifter binding: shifter position 2. Note mismatch in ID numbering scheme!                                                                                           |
+| `gear4`        | binary | H-shifter binding: shifter position 3. Note mismatch in ID numbering scheme!                                                                                           |
+| `gear5`        | binary | H-shifter binding: shifter position 4. Note mismatch in ID numbering scheme!                                                                                           |
+| `gear6`        | binary | H-shifter binding: shifter position 5. Note mismatch in ID numbering scheme!                                                                                           |
+| `gear7`        | binary | H-shifter binding: shifter position 6. Note mismatch in ID numbering scheme!                                                                                           |
+| `gear8`        | binary | `gear_impulse_index` 8. Requires custom gearbox configuration file.                                                                                                    |
+| `gear9`        | binary | `gear_impulse_index` 9. Requires custom gearbox configuration file.                                                                                                    |
+| `gear10`       | binary | `gear_impulse_index` 10. Requires custom gearbox configuration file.                                                                                                   |
+| `gear11`       | binary | `gear_impulse_index` 11. Requires custom gearbox configuration file.                                                                                                   |
+| `gear12`       | binary | `gear_impulse_index` 12. Requires custom gearbox configuration file.                                                                                                   |
+| `gear13`       | binary | `gear_impulse_index` 13. Requires custom gearbox configuration file.                                                                                                   |
+| `gear14`       | binary | `gear_impulse_index` 14. Requires custom gearbox configuration file.                                                                                                   |
+| `gear15`       | binary | `gear_impulse_index` 15. Requires custom gearbox configuration file.                                                                                                   |
+| `gear16`       | binary | `gear_impulse_index` 16. Requires custom gearbox configuration file.                                                                                                   |
+| `adjuster`     | binary | HUD key binding: truck adjustment.                                                                                                                                     |
+| `advmouse`     | binary | HUD key binding: quick info.                                                                                                                                           |
+| `advetamode`   | binary | HUD key binding: nagivation destination mode.                                                                                                                          |
+| `gar_man`      | binary | Quick actions key binding: garage manager.                                                                                                                             |
+| `advzoomin`    | binary | HUD key binding: navigation zoom in.                                                                                                                                   |
+| `advzoomout`   | binary | HUD key binding: navigation zoom out.                                                                                                                                  |
+| `advoptions`   | binary | HUD key binding: widget options.                                                                                                                                       |
+| `services`     | binary | HUD key binding: services & adjustments.                                                                                                                               |
+| `assistact1`   | binary | HUD key binding: assistant action 1.                                                                                                                                   |
+| `assistact2`   | binary | HUD key binding: assistant action 2.                                                                                                                                   |
+| `assistact3`   | binary | HUD key binding: assistant action 3.                                                                                                                                   |
+| `assistact4`   | binary | HUD key binding: assistant action 4.                                                                                                                                   |
+| `assistact5`   | binary | HUD key binding: assistant action 5.                                                                                                                                   |
+| `adj_seats`    | binary |                                                                                                                                                                        |
+| `adj_mirrors`  | binary |                                                                                                                                                                        |
+| `adj_lights`   | binary |                                                                                                                                                                        |
+| `adj_uimirror` | binary |                                                                                                                                                                        |
+| `chat_act`     | binary | Convoy key binding: chat activation.                                                                                                                                   |
+| `quick_chat`   | binary | Convoy key binding: quick replies.                                                                                                                                     |
+| `cycl_zoom`    | binary |                                                                                                                                                                        |
+| `name_tags`    | binary | Convoy key binding: show name tags.                                                                                                                                    |
+| `headreset`    | binary | Head tracking key binding: reset head (head tracking).                                                                                                                 |
+| `menustereo`   | binary |                                                                                                                                                                        |
