@@ -1,14 +1,24 @@
 #pragma once
 
 #include <filesystem>
+#include <map>
 #include <regex>
 #include <string>
 #include <vector>
 
 #include <nlohmann/json.hpp>
 
+/// Name of the configuration file.
+static constexpr auto CONFIG_FILENAME = "config.yaml";
+
+/// Name of the document root subdirectory.
+static constexpr auto CONFIG_DOCUMENT_ROOT_SUBDIR = "www";
+
 /// Configuration file key for the port to listen on.
 static constexpr auto CONFIG_PORT = "port";
+
+/// Port listed in the default configuration file.
+static constexpr auto CONFIG_DEFAULT_PORT = 8080;
 
 /// Configuration file key for the content-type map.
 static constexpr auto CONFIG_CONTENT_TYPES = "content-types";
@@ -69,7 +79,22 @@ static constexpr auto CONFIG_OPERATOR_ROUND = "round";
 /// date starting at 0001-01-01T00:00:00Z.
 static constexpr auto CONFIG_OPERATOR_DATE = "date";
 
-/// Configuration object for TruckTel.
+/// Channel types supported by the game.
+enum struct InputChannelType { BINARY, FLOAT };
+
+/// Description of an input channel.
+struct InputChannelDescriptor {
+    /// Player-friendly name used by the game in hints.
+    std::string friendly_name;
+
+    /// Channel data type.
+    InputChannelType type;
+};
+
+/// Description of all input channels.
+using InputChannelDescriptors = std::map<std::string, InputChannelDescriptor>;
+
+/// Configuration object for a TruckTel app.
 struct Configuration {
     /// Port to listen on.
     uint16_t port;
@@ -84,10 +109,11 @@ struct Configuration {
     nlohmann::json custom_structures;
 
     /// Input configuration.
-    nlohmann::json input_configuration;
+    InputChannelDescriptors input_channel_descriptors;
 };
 
-/// Loads the configuration file. If the file does not exist, an attempt is
-/// first made to write the default configuration file, and then that is loaded
-/// as it normally would be if successful.
-Configuration load_config_file(const std::filesystem::path &path);
+/// Loads the configuration file for the given app path. If the app doesn't have
+/// a configuration file, an attempt is first made to write the default
+/// configuration file, and then that is loaded as it normally would be if
+/// successful.
+Configuration load_app_config(const std::filesystem::path &app_path);

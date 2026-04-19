@@ -4,7 +4,7 @@
 #include <filesystem>
 #include <map>
 
-#include "../config.h"
+#include "config.h"
 #include "database.h"
 #include "http.h"
 #include "websocket.h"
@@ -86,11 +86,11 @@ public:
     /// the server has shut down.
     void run(const Configuration &config);
 
-    /// Call from any thread to tell the server to stop accepting connections
-    /// and close all open connections.
-    void shutdown();
-
     /// Hint from the game thread that new data is available and the server
     /// thread should poll again soon.
     void update();
+
+    /// Call from any thread to tell the server to stop accepting connections
+    /// and close all open connections.
+    void stop();
 };

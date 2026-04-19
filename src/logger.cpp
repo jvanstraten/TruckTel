@@ -81,6 +81,9 @@ void Logger::init(const scs_log_t game_log_callback) {
 }
 
 void Logger::set_file(const std::string &path) {
+    Logger::info("Note: log messages from the server thread may not show");
+    Logger::info("up in the game log immediately while in the main menu");
+    Logger::info("and not focused. Track the plugin log file if necessary:");
     info("Logging to %s", path.c_str());
     instance->log_file.open(path.c_str());
 }

@@ -15,19 +15,16 @@
 #include <nlohmann/json.hpp>
 
 #include "api.h"
-#include "config.h"
+#include "server/config.h"
 
 /// Singleton class that manages input states in the game thread.
 class Input {
 private:
-    /// Channel types supported by the game.
-    enum struct ChannelType { BINARY, FLOAT };
-
     /// State logic for an input channel. Manages things like button presses.
     class Channel {
 
         /// Whether this is a boolean or floating-point channel.
-        const ChannelType channel_type;
+        const InputChannelType channel_type;
 
         /// Counter that is incremented for every API request to press this
         /// button, and decremented whenever update requests a 0.0 on behalf of
@@ -46,7 +43,7 @@ private:
         const std::string name;
 
         /// Channel constructor.
-        Channel(std::string name, ChannelType channel_type);
+        Channel(std::string name, InputChannelType channel_type);
 
         /// Called when the game activates our input device and/or we haven't
         /// been queried for at least a second, to prevent old button clicks
@@ -66,7 +63,7 @@ private:
     /// Maps semantic input names to the index we registered them with. This is
     /// expected not to be mutated anymore once any threading begins; it is not
     /// protected by a mutex.
-    std::map<std::string, std::pair<scs_u32_t, ChannelType>> channel_map;
+    std::map<std::string, std::pair<scs_u32_t, InputChannelType>> channel_map;
 
     /// Vector of all the input channel handlers.
     std::vector<Channel> channels;
@@ -126,13 +123,13 @@ private:
     /// Registers a channel. This must only be done in the constructor; the
     /// structures it affects are assumed immutable after construction.
     void register_channel(
-        const char *name, const char *display_name, ChannelType type
+        const char *name, const char *display_name, InputChannelType type
     );
 
     /// Constructor.
-    explicit Input(
+    Input(
         const scs_input_init_params_v100_t *init_params,
-        const Configuration &config
+        const InputChannelDescriptors &descriptors
     );
 
 public:
@@ -140,7 +137,7 @@ public:
     /// input logic.
     static void init(
         const scs_input_init_params_v100_t *init_params,
-        const Configuration &config
+        const InputChannelDescriptors &descriptors
     );
 
     /// Called from the SCS API input shutdown hook to clean up memory.

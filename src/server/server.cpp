@@ -129,10 +129,10 @@ void Server::run(const Configuration &config) {
     endpoint.run();
 }
 
-void Server::shutdown() {
-    asio::post(endpoint.get_io_service(), [this]() { on_shutdown(); });
-}
-
 void Server::update() {
     asio::post(endpoint.get_io_service(), [this]() { on_update(); });
+}
+
+void Server::stop() {
+    asio::post(endpoint.get_io_service(), [this]() { on_shutdown(); });
 }
