@@ -560,6 +560,13 @@ Notation:
    numbers are stored as JSON object key strings in the structured format, NOT
    as array indices.
 
+#### TruckTel identification
+
+| Key                | Type    | Description                        |
+|--------------------|---------|------------------------------------|
+| `trucktel.name`    | string  | Full name and version of TruckTel. |
+| `trucktel.version` | version | TruckTel major and minor version.  |
+
 #### Game identification
 
 | Key                | Type    | Description                                                        |

@@ -179,6 +179,15 @@ static constexpr auto API_CONFIG_GAME_ATTRIBUTE_API_VERSION = "api_version";
 /// working directory when the plugin is loaded.
 static constexpr auto API_CONFIG_GAME_ATTRIBUTE_INSTALL_DIR = "install_dir";
 
+/// Configuration key for information about TruckTel itself.
+static constexpr auto API_CONFIG_TRUCKTEL = "trucktel";
+
+/// TruckTel name.
+static constexpr auto API_CONFIG_TRUCKTEL_NAME = "name";
+
+/// TruckTel version.
+static constexpr auto API_CONFIG_TRUCKTEL_VERSION = "version";
+
 /// Channel for the render time argument passed along with
 /// SCS_TELEMETRY_EVENT_frame_start. See
 /// scs_telemetry_frame_start_t.render_time.

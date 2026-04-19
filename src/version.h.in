@@ -1,0 +1,18 @@
+#pragma once
+
+/// Full name and version of TruckTel itself.
+static constexpr auto TRUCKTEL_FULL_NAME = "TruckTel @TRUCKTEL_VERSION_FULL@";
+
+/// TruckTel major version component.
+static constexpr auto TRUCKTEL_VERSION_MAJOR = @TruckTel_VERSION_MAJOR@;
+
+/// TruckTel minor version component.
+static constexpr auto TRUCKTEL_VERSION_MINOR = @TruckTel_VERSION_MINOR@;
+
+/// TruckTel patch version component.
+static constexpr auto TRUCKTEL_VERSION_PATCH = @TruckTel_VERSION_PATCH@;
+
+/// Name of TruckTel's working directory, containing the app directories and
+/// log file. This should get a new name (a version suffix, I guess) when
+/// breaking changes are made.
+static constexpr auto TRUCKTEL_DIRECTORY_NAME = "trucktel";
