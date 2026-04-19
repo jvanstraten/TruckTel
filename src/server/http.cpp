@@ -28,7 +28,7 @@ HttpResponse HttpHandler::handle_static(const Url &url) const {
 
     // Open the file.
     std::ifstream file;
-    file.open(path.string().c_str(), std::ios::in);
+    file.open(path.string().c_str(), std::ios::in | std::ios::binary);
     if (!file) throw FileNotFound(url.join_path());
 
     // Read the file to a string.
