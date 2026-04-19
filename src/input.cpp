@@ -2,12 +2,12 @@
 
 #include "logger.h"
 
-Input::Channel::Channel(std::string name, ChannelType channel_type)
+Input::Channel::Channel(std::string name, const InputChannelType channel_type)
     : channel_type(channel_type), name(std::move(name)) {
     // Initialize float channels to midscale, but binary channels to
     // MIN = false.
-    state = channel_type == ChannelType::FLOAT ? API_INPUT_VALUE_MID
-                                               : API_INPUT_VALUE_MIN;
+    state = channel_type == InputChannelType::FLOAT ? API_INPUT_VALUE_MID
+                                                    : API_INPUT_VALUE_MIN;
     game_state = state;
 }
 
@@ -34,7 +34,7 @@ bool Input::Channel::get_event(scs_input_event_t &event) {
 
     // Binarize the state if necessary. Avoids redundant input events for binary
     // channels if the state changes, but not past the threshold.
-    if (channel_type == ChannelType::BINARY) {
+    if (channel_type == InputChannelType::BINARY) {
         state = state < API_INPUT_VALUE_MID ? API_INPUT_VALUE_MIN
                                             : API_INPUT_VALUE_MAX;
     }
@@ -49,10 +49,10 @@ bool Input::Channel::get_event(scs_input_event_t &event) {
     // Logger::info("setting input channel %d to %f", event.input_index, state);
     game_state = state;
     switch (channel_type) {
-        case ChannelType::BINARY:
+        case InputChannelType::BINARY:
             event.value_bool.value = state >= API_INPUT_VALUE_MID;
             return true;
-        case ChannelType::FLOAT:
+        case InputChannelType::FLOAT:
             event.value_float.value = state;
             return true;
     }
@@ -153,7 +153,7 @@ SCSAPI_RESULT Input::scs_input_event(
 }
 
 void Input::register_channel(
-    const char *name, const char *display_name, const ChannelType type
+    const char *name, const char *display_name, const InputChannelType type
 ) {
     // Create an input channel object for this channel.
     channel_map[name] = {static_cast<scs_u32_t>(channels.size()), type};
@@ -164,10 +164,10 @@ void Input::register_channel(
     descriptor.name = name;
     descriptor.display_name = display_name;
     switch (type) {
-        case ChannelType::BINARY:
+        case InputChannelType::BINARY:
             descriptor.value_type = SCS_VALUE_TYPE_bool;
             break;
-        case ChannelType::FLOAT:
+        case InputChannelType::FLOAT:
             descriptor.value_type = SCS_VALUE_TYPE_float;
             break;
     }
@@ -175,39 +175,21 @@ void Input::register_channel(
 }
 
 Input::Input(
-    const scs_input_init_params_v100_t *init_params, const Configuration &config
+    const scs_input_init_params_v100_t *init_params,
+    const InputChannelDescriptors &descriptors
 ) {
     // Leave only an empty input system if no channels are configured.
-    if (config.input_configuration.is_null()) {
+    if (descriptors.empty()) {
         Logger::info("No input channels configured. Input system disabled.");
         return;
     }
     try {
-        auto it = config.input_configuration.find(CONFIG_INPUT_FLOAT);
-        if (it != config.input_configuration.end()) {
-            for (const auto &item : it->items()) {
-                register_channel(
-                    item.key().c_str(), item.value().get<std::string>().c_str(),
-                    ChannelType::FLOAT
-                );
-            }
-        }
-        it = config.input_configuration.find(CONFIG_INPUT_BINARY);
-        if (it != config.input_configuration.end()) {
-            for (const auto &item : it->items()) {
-                register_channel(
-                    item.key().c_str(), item.value().get<std::string>().c_str(),
-                    ChannelType::BINARY
-                );
-            }
+        for (const auto &[name, descriptor] : descriptors) {
+            register_channel(
+                name.c_str(), descriptor.friendly_name.c_str(), descriptor.type
+            );
         }
         poll_index = channels.size();
-        if (channels.empty()) {
-            Logger::info(
-                "No input channels configured. Input system disabled."
-            );
-            return;
-        }
         Logger::info("%d input channel(s) configured.", channels.size());
     } catch (const std::exception &e) {
         Logger::error("Input system misconfigured: %s", e.what());
@@ -251,11 +233,12 @@ Input::Input(
 }
 
 void Input::init(
-    const scs_input_init_params_v100_t *init_params, const Configuration &config
+    const scs_input_init_params_v100_t *init_params,
+    const InputChannelDescriptors &descriptors
 ) {
     if (instance)
         throw std::runtime_error("can only have one recorder at once");
-    instance.reset(new Input(init_params, config));
+    instance.reset(new Input(init_params, descriptors));
 }
 
 void Input::shutdown() {
@@ -277,10 +260,10 @@ nlohmann::json Input::get_inputs() {
     for (const auto &[name, info] : instance->channel_map) {
         auto type = "?";
         switch (info.second) {
-            case ChannelType::BINARY:
+            case InputChannelType::BINARY:
                 type = API_INPUT_TYPE_BINARY;
                 break;
-            case ChannelType::FLOAT:
+            case InputChannelType::FLOAT:
                 type = API_INPUT_TYPE_FLOAT;
                 break;
         }

@@ -1,18 +1,54 @@
 #include "server_thread.h"
 
 #include "logger.h"
-#include "recorder/recorder.h"
 #include "server.h"
 
-void ServerThread::main(Configuration config) const {
+void ServerThread::main() const {
     try {
-        server->run(config);
+        server->run(configuration);
     } catch (std::exception &e) {
         Logger::error("fatal error in server: %s", e.what());
     }
 }
 
-ServerThread::ServerThread(const Configuration &config)
+ServerThread::ServerThread(const std::filesystem::path &app_path)
+    : configuration(load_app_config(app_path)) {}
+
+uint16_t ServerThread::port() const {
+    return configuration.port;
+}
+
+const InputChannelDescriptors &ServerThread::get_input_descriptors() const {
+    return configuration.input_channel_descriptors;
+}
+
+void ServerThread::start() {
+    server = std::make_unique<Server>();
+    thread = std::thread(&ServerThread::main, this);
+}
+
+void ServerThread::update() {
+    if (!server) return;
+    server->update();
+}
+
+void ServerThread::stop() {
+    if (!server) return;
+    server->stop();
+}
+
+void ServerThread::join() {
+    if (!server) return;
+    thread.join();
+    server.reset();
+}
+
+ServerThread::~ServerThread() {
+    if (server) server->stop();
+    if (thread.joinable()) thread.join();
+}
+
+/*ServerThread::ServerThread(const Configuration &config)
     : server(std::make_unique<Server>()),
       thread(&ServerThread::main, this, config) {}
 
@@ -40,4 +76,4 @@ void ServerThread::shutdown() {
     Logger::info("Shutting down server...");
     instance.reset();
     Logger::info("Server has shut down");
-}
+}*/

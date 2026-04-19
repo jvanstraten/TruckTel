@@ -69,6 +69,12 @@ poll data from the recorders. For frequently-changing data this is just a
 single memcpy per frame, so the performance hit to the player should be
 negligible.
 
+It's not easily possible to load TruckTel multiple times, in case a player
+wants to use multiple TruckTel-based apps at the same time. To account for
+this, all app-specific files are scoped in their own directory. TruckTel will
+load each of these with their own server thread, each running from its own
+port.
+
 ## How do I use it?
 
 If you're developing an app and want to use TruckTel as a telemetry source,
@@ -82,33 +88,35 @@ the directory structure should look like this:
 
 ```
 <game-install-dir>
- |- *.scs                           <- game data and normal mods
- |- ...                                TruckTel does NOT go here
+ |- *.scs                               <- game data and normal mods.
+ |- ...                                    TruckTel does NOT go here
  '- bin
      '- linux_x64
-         |- eurotrucks2             <- game executable is here
+         |- eurotrucks2                 <- game executable is here
          |- ...
          '- plugins
-             |- libtrucktel.so      <- library goes here!
+             |- libtrucktel.so          <- library goes here!
              '- trucktel
-                 |- config.yaml     <- created by the library,
-                 |                     but you should provide one
-                 |- log.txt         <- log output file
-                 |- LICENSE         <- if you don't want to violate
-                 |                     websocket++'s license...
-                 '- www             <- document root for static
-                     |                 web server
-                     '- index.html  <- you should probably put at
-                                       least a landing page here
+                 |- log.txt             <- log output file
+                 |- LICENSE             <- required by dependencies
+                 '- your-app-name       <- rename for your app
+                     |- config.yaml     <- created by the library,
+                     |                     but you should provide one
+                     '- www             <- document root for static
+                         |                 web server
+                         '- index.html  <- you should probably put at
+                                           least a landing page here
 ```
 
 What you should probably provide to the user is a zip file containing
 
  - the libraries for each platform;
  - `trucktel` directory with:
-    - `config.yaml`
-    - `www` directory with your files, if your app is browser-based
-       - `index.html` landing page
+    - `LICENSE` file
+    - a directory named after your app, with:
+       - `config.yaml`
+       - `www` directory with your files, if your app is browser-based
+          - `index.html` landing page
 
 along with instructions for the player on where to extract this, or an
 installer to automate that. See the [`bundled`](bundled) directory for a

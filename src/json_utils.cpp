@@ -3,8 +3,8 @@
 #include <ctime>
 
 #include "api.h"
-#include "config.h"
 #include "logger.h"
+#include "server/config.h"
 
 void json_assign_path(
     nlohmann::json &json,

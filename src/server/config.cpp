@@ -7,17 +7,20 @@
 
 #include <fkYAML/node.hpp>
 
-#include "json_utils.h"
+#include "../json_utils.h"
 
-Configuration load_config_file(const std::filesystem::path &path) {
+Configuration load_app_config(const std::filesystem::path &app_path) {
+    // Get configuration file path.
+    const auto config_path = app_path / CONFIG_FILENAME;
+
     // Generate a default configuration file if no configuration file exists
     // yet.
-    if (!std::filesystem::exists(path)) {
+    if (!std::filesystem::exists(config_path)) {
         std::ofstream ofs;
-        ofs.open(path.string().c_str());
+        ofs.open(config_path.string().c_str());
         ofs << "---" << std::endl;
         ofs << "# Which port the server should listen on." << std::endl;
-        ofs << CONFIG_PORT << ": 8080" << std::endl;
+        ofs << CONFIG_PORT << ": " << CONFIG_DEFAULT_PORT << std::endl;
         ofs << std::endl;
         ofs << "# Which content types the static server should use. '"
             << CONFIG_CONTENT_TYPE_FILENAME << "' is a regex that's"
@@ -101,14 +104,21 @@ Configuration load_config_file(const std::filesystem::path &path) {
 
     // Load the configuration file.
     std::ifstream ifs;
-    ifs.open(path.string().c_str());
+    ifs.open(config_path.string().c_str());
     if (!ifs.is_open()) {
         throw std::runtime_error("failed to load default configuration file");
     }
     try {
         auto yaml = fkyaml::node::deserialize(ifs);
         Configuration server_config = {};
-        server_config.port = yaml[CONFIG_PORT].get_value<int>();
+
+        // Parse port number.
+        server_config.port = yaml[CONFIG_PORT].get_value<uint16_t>();
+
+        // Set document root.
+        server_config.document_root = app_path / CONFIG_DOCUMENT_ROOT_SUBDIR;
+
+        // Parse content types.
         for (const auto &ob : yaml[CONFIG_CONTENT_TYPES]) {
             auto regex = std::regex(
                 ob[CONFIG_CONTENT_TYPE_FILENAME].get_value<std::string>()
@@ -117,16 +127,42 @@ Configuration load_config_file(const std::filesystem::path &path) {
                 ob[CONFIG_CONTENT_TYPE_RESULT].get_value<std::string>();
             server_config.content_types.emplace_back(regex, content_type);
         }
+
+        // Parse custom data structures for the API.
         if (yaml.contains(CONFIG_CUSTOM_STRUCTURES)) {
             server_config.custom_structures =
                 yaml_to_json(yaml[CONFIG_CUSTOM_STRUCTURES]);
         }
+
+        // Parse input configuration.
         if (yaml.contains(CONFIG_INPUT)) {
-            server_config.input_configuration =
-                yaml_to_json(yaml[CONFIG_INPUT]);
-        } else {
-            server_config.input_configuration = nullptr;
+            const auto &input_yaml = yaml[CONFIG_INPUT];
+            if (input_yaml.contains(CONFIG_INPUT_FLOAT)) {
+                const auto &inputs = input_yaml[CONFIG_INPUT_FLOAT];
+                for (const auto &item : inputs.map_items()) {
+                    const auto name = item.key().get_value<std::string>();
+                    const auto friendly = item.value().get_value<std::string>();
+                    server_config.input_channel_descriptors.emplace(
+                        name, InputChannelDescriptor{
+                                  friendly, InputChannelType::FLOAT
+                              }
+                    );
+                }
+            }
+            if (input_yaml.contains(CONFIG_INPUT_BINARY)) {
+                const auto &inputs = input_yaml[CONFIG_INPUT_BINARY];
+                for (const auto &item : inputs.map_items()) {
+                    const auto name = item.key().get_value<std::string>();
+                    const auto friendly = item.value().get_value<std::string>();
+                    server_config.input_channel_descriptors.emplace(
+                        name, InputChannelDescriptor{
+                                  friendly, InputChannelType::BINARY
+                              }
+                    );
+                }
+            }
         }
+
         return server_config;
     } catch (std::exception &e) {
         throw std::runtime_error(

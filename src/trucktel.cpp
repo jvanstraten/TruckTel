@@ -1,13 +1,31 @@
 #include <filesystem>
+#include <list>
+#include <set>
 
 #include <scssdk_input.h>
 #include <scssdk_telemetry.h>
 
-#include "config.h"
 #include "input.h"
 #include "logger.h"
 #include "recorder/recorder.h"
 #include "server/server_thread.h"
+
+//------------------------------------------------------------------------------
+// Directory structure
+//------------------------------------------------------------------------------
+/// Name of the plugins directory loaded by the game.
+static constexpr auto DIR_PLUGINS = "plugins";
+
+/// Name of TruckTel's working directory, containing the app directories and
+/// log file.
+static constexpr auto DIR_TRUCKTEL = "trucktel";
+
+/// Name of TruckTel's log file.
+static constexpr auto LOG_FILENAME = "log.txt";
+
+/// Default app that TruckTel generates when it's missing any app
+/// subdirectories.
+static constexpr auto DIR_APP_DEFAULT = "your-app-name";
 
 //------------------------------------------------------------------------------
 // Common logic
@@ -20,8 +38,8 @@ static std::filesystem::path game_install_path;
 /// Detected trucktel configuration directory.
 static std::filesystem::path trucktel_path;
 
-/// TruckTel configuration.
-static Configuration configuration;
+/// List of application servers.
+static std::list<ServerThread> servers;
 
 /// Initializes logic common to both the telemetry and input sides of the
 /// plugin. This includes the logger and environment detection. These things
@@ -36,7 +54,7 @@ static void common_init(const scs_sdk_init_params_v100_t &init_params) {
     // executable is placed in, so the path below should point to the
     // plugin directory.
     const auto cwd = std::filesystem::current_path();
-    const auto plugin_path = cwd / "plugins";
+    const auto plugin_path = cwd / DIR_PLUGINS;
 
     // Make sure that this directory actually exists, to get some confidence
     // that we're looking in the right place.
@@ -55,18 +73,55 @@ static void common_init(const scs_sdk_init_params_v100_t &init_params) {
     // everything other than the plugin itself into our own directory. This
     // will hold the log file, configuration, static content for the server,
     // etc.
-    trucktel_path = plugin_path / "trucktel";
+    trucktel_path = plugin_path / DIR_TRUCKTEL;
 
     // If the trucktel directory doesn't exist yet, create it.
     if (!std::filesystem::is_directory(trucktel_path)) {
         std::filesystem::create_directory(trucktel_path);
     }
 
-    // Log file within the trucktel directory.
-    Logger::set_file((trucktel_path / "log.txt").string());
+    // Write to log file within the trucktel directory.
+    Logger::set_file((trucktel_path / LOG_FILENAME).string());
 
-    // Load the configuration file.
-    configuration = load_config_file(trucktel_path / "config.yaml");
+    // Each subdirectory within the trucktel directory represents a separate
+    // app, each with its own configuration file. If there is no app yet, a
+    // default one is generated.
+    servers.clear();
+    std::set<uint16_t> ports_used;
+    for (auto const &entry :
+         std::filesystem::directory_iterator{trucktel_path}) {
+        if (!entry.is_directory()) continue;
+        const auto &app_path = entry.path();
+        const auto app_name = app_path.filename().string();
+        Logger::info("Loading configuration for app: %s", app_name.c_str());
+        try {
+            servers.emplace_back(app_path);
+            const auto port = servers.back().port();
+            if (ports_used.insert(port).second) {
+                Logger::info("%s will run on port %d", app_name.c_str(), port);
+            } else {
+                Logger::error(
+                    "%s wants to use port %d, which is already in use.",
+                    app_name.c_str(), port
+                );
+                Logger::error(
+                    "App will be disabled. Assign it a different port in its "
+                    "config file!"
+                );
+                servers.pop_back();
+            }
+        } catch (const std::exception &e) {
+            Logger::error(
+                "Failed to load %s app: %s", app_name.c_str(), e.what()
+            );
+        }
+    }
+    if (servers.empty()) {
+        const auto default_app_path = trucktel_path / DIR_APP_DEFAULT;
+        Logger::warn("No apps configured! Generating default...");
+        std::filesystem::create_directory(default_app_path);
+        servers.emplace_back(default_app_path);
+    }
 }
 
 /// Shuts down common logic. Shutdown is only performed if this was the last
@@ -88,15 +143,32 @@ static void common_shutdown() {
 /// Initializes the server thread. Must be called only when both sides of the
 /// plugin have finished initializing.
 static void server_init() {
-    // Initialize the HTTP server logic.
-    Logger::info("Initializing server thread...");
-    configuration.document_root = trucktel_path / "www";
-    ServerThread::init(configuration);
+    if (servers.empty()) return;
+    Logger::info("Initializing server thread(s)...");
+    for (auto &server : servers) {
+        server.start();
+    }
+}
+
+/// Instructs the servers to fetch new data from the recorder.
+static void server_update() {
+    for (auto &server : servers) {
+        server.update();
+    }
 }
 
 /// Shuts down the server thread, if any, including waiting for it to join.
 static void server_shutdown() {
-    ServerThread::shutdown();
+    if (servers.empty()) return;
+    Logger::info("Shutting down server(s)...");
+    for (auto &server : servers) {
+        server.stop();
+    }
+    for (auto &server : servers) {
+        server.join();
+    }
+    servers.clear();
+    Logger::info("All servers have shut down");
 }
 
 //------------------------------------------------------------------------------
@@ -129,6 +201,7 @@ static void telemetry_init(
     // Initialize the data recording logic.
     Logger::info("Initializing telemetry logic...");
     Recorder::init(version, init_params, game_install_path.string());
+    Recorder::set_update_server_callback(server_update);
     telemetry_initialized = true;
 
     // If the input side of the plugin was loaded first, initialize the server
@@ -177,7 +250,13 @@ static void input_init(const scs_input_init_params_v100_t *const init_params) {
 
     // Initialize the input logic.
     Logger::info("Initializing input logic...");
-    Input::init(init_params, configuration);
+    InputChannelDescriptors descriptors;
+    for (auto &server : servers) {
+        for (const auto &item : server.get_input_descriptors()) {
+            descriptors.emplace(item);
+        }
+    }
+    Input::init(init_params, descriptors);
     input_initialized = true;
 
     // If the telemetry side of the plugin was loaded first, initialize the
