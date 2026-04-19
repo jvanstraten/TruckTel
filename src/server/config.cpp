@@ -9,6 +9,22 @@
 
 #include "../json_utils.h"
 
+/// Default index.html file generated if no www folder exists.
+static constexpr auto DEFAULT_INDEX_FILE = R"(
+<!doctype html>
+<html>
+<head>
+<title>TruckTel is working!</title>
+<body>
+<h1>TruckTel is working!</h1>
+<p>This is the default landing page for the webserver embedded in TruckTel.</p>
+<p>If you're the developer of an app, you should probably replace this with
+your own landing page.</p>
+</body>
+</head>
+</html>
+)";
+
 Configuration load_app_config(const std::filesystem::path &app_path) {
     // Get configuration file path.
     const auto config_path = app_path / CONFIG_FILENAME;
@@ -117,6 +133,18 @@ Configuration load_app_config(const std::filesystem::path &app_path) {
 
         // Set document root.
         server_config.document_root = app_path / CONFIG_DOCUMENT_ROOT_SUBDIR;
+
+        // If the document root does not exist yet, create it, and add a default
+        // index.html.
+        if (!std::filesystem::is_directory(server_config.document_root)) {
+            std::filesystem::create_directory(server_config.document_root);
+            const auto index =
+                server_config.document_root / CONFIG_INDEX_FILENAME;
+            std::ofstream ofs;
+            ofs.open(index.string().c_str());
+            ofs << DEFAULT_INDEX_FILE;
+            ifs.close();
+        }
 
         // Parse content types.
         for (const auto &ob : yaml[CONFIG_CONTENT_TYPES]) {

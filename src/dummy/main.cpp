@@ -158,7 +158,14 @@ scs_result_t register_device(const scs_input_device_t *device_info) {
 }
 
 /// Entry point for the dummy app.
-int main() {
+int main(int argc, char *argv[]) {
+    bool interactive = true;
+    for (size_t i = 1; i < argc; i++) {
+        if (!strcmp(argv[i], "--non-interactive")) {
+            interactive = false;
+        }
+    }
+
     scs_sdk_init_params_v100_t common_params{};
     common_params.game_name = "Euro Truck Simulator Simulator";
     common_params.game_id = SCS_GAME_ID_EUT2;
@@ -180,7 +187,7 @@ int main() {
     scs_telemetry_init(SCS_TELEMETRY_VERSION_1_01, &telemetry_params);
     scs_input_init(SCS_INPUT_VERSION_1_00, &input_params);
 
-    while (true) {
+    while (interactive) {
         std::future<std::string> future = std::async(get_command);
         while (future.wait_for(std::chrono::milliseconds(1000 / 60)) !=
                std::future_status::ready) {
@@ -197,4 +204,6 @@ int main() {
     // Order undefined by API:
     scs_telemetry_shutdown();
     scs_input_shutdown();
+
+    return 0;
 }

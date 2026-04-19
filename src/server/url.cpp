@@ -4,6 +4,7 @@
 #include <sstream>
 
 #include "api.h"
+#include "config.h"
 
 /// Returns whether the given character is printable ASCII. Not using the
 /// standard library to avoid locale shenanigans; this doesn't need to be
@@ -218,7 +219,7 @@ std::filesystem::path Url::as_filesystem_path(
         path /= element;
     }
     if (std::filesystem::is_directory(path)) {
-        path /= "index.html";
+        path /= CONFIG_INDEX_FILENAME;
     }
     return path;
 }

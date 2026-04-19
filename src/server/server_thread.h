@@ -1,6 +1,9 @@
 #pragma once
 
+#include <atomic>
+#include <condition_variable>
 #include <memory>
+#include <mutex>
 #include <thread>
 
 #include "config.h"
@@ -19,10 +22,23 @@ class ServerThread {
     std::unique_ptr<Server> server;
 
     /// Main function for the thread.
-    void main() const;
+    void main();
 
     /// Thread handle.
     std::thread thread;
+
+    /// Condition variable used to notify that the server has been initialized.
+    std::condition_variable state_cv;
+
+    /// Mutex for init_cv.
+    std::mutex state_mutex;
+
+    /// Whether initialization was successful. Guarded by state_mutex and
+    /// state_cv.
+    std::atomic<bool> init_success = false;
+
+    /// Whether the server thread crashed. Guarded by state_mutex and state_cv.
+    std::atomic<bool> server_crashed = false;
 
 public:
     /// Constructor. Loads the configuration file for the given path, but

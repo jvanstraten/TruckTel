@@ -93,6 +93,7 @@ add_library(trucktel SHARED
         src/server/websocket.h
         src/server/websocket.cpp
         ${asio_SOURCE_DIR}/asio/src/asio.cpp
+        src/license.h
 )
 target_link_libraries(trucktel
         PRIVATE nlohmann_json::nlohmann_json

@@ -31,6 +31,23 @@ jobs:
       - name: Build
         run: cmake --build ${{github.workspace}}/build --config Release
 
+      - name: Generate bundled files
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        run: |
+          mkdir -p ${{github.workspace}}/gamedir/plugins
+          cp ${{github.workspace}}/build/libtrucktel.so ${{github.workspace}}/gamedir/plugins
+          cd ${{github.workspace}}/gamedir
+          ${{github.workspace}}/build/dummy --non-interactive
+          rm `find -name log.txt`
+          find
+
+      - name: Upload (Linux)
+        uses: actions/upload-artifact@v7
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        with:
+          name: output-linux
+          path: gamedir/plugins/*
+
       - name: Upload (Windows)
         if: ${{ matrix.os == 'windows-latest' }}
         uses: actions/upload-artifact@v7
@@ -38,33 +55,24 @@ jobs:
           name: output-windows
           path: build\Release\trucktel.dll
 
-      - name: Upload (Linux)
-        uses: actions/upload-artifact@v7
-        if: ${{ matrix.os == 'ubuntu-latest' }}
-        with:
-          name: output-linux
-          path: build/libtrucktel.so
-
   release:
     needs: build
     if: ${{ startsWith(github.ref, 'refs/tags/') }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-
       - uses: actions/download-artifact@v8
         with:
           name: output-windows
-          path: bundled
+          path: build
 
       - uses: actions/download-artifact@v8
         with:
           name: output-linux
-          path: bundled
+          path: build
 
       - name: Build binary release package
         run: |
-          cd bundled
+          cd build
           ls -R
           7z a ../trucktel.zip .
 

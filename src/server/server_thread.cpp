@@ -3,11 +3,22 @@
 #include "logger.h"
 #include "server.h"
 
-void ServerThread::main() const {
+void ServerThread::main() {
     try {
-        server->run(configuration);
+        server->init(configuration);
+        {
+            std::unique_lock lock(state_mutex);
+            init_success.store(true);
+        }
+        state_cv.notify_all();
+        server->run();
     } catch (std::exception &e) {
         Logger::error("fatal error in server: %s", e.what());
+        {
+            std::unique_lock lock(state_mutex);
+            server_crashed.store(true);
+        }
+        state_cv.notify_all();
     }
 }
 
@@ -25,15 +36,29 @@ const InputChannelDescriptors &ServerThread::get_input_descriptors() const {
 void ServerThread::start() {
     server = std::make_unique<Server>();
     thread = std::thread(&ServerThread::main, this);
+    std::unique_lock lk(state_mutex);
+    state_cv.wait(lk, [this] {
+        return init_success.load() || server_crashed.load();
+    });
 }
 
 void ServerThread::update() {
     if (!server) return;
+    if (server_crashed.load()) {
+        thread.join();
+        server.reset();
+        return;
+    }
     server->update();
 }
 
 void ServerThread::stop() {
     if (!server) return;
+    if (server_crashed.load()) {
+        thread.join();
+        server.reset();
+        return;
+    }
     server->stop();
 }
 
