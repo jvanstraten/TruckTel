@@ -150,6 +150,13 @@ static void server_init() {
     }
 }
 
+/// Instructs the servers to fetch new data from the recorder.
+static void server_update() {
+    for (auto &server : servers) {
+        server.update();
+    }
+}
+
 /// Shuts down the server thread, if any, including waiting for it to join.
 static void server_shutdown() {
     if (servers.empty()) return;
@@ -194,6 +201,7 @@ static void telemetry_init(
     // Initialize the data recording logic.
     Logger::info("Initializing telemetry logic...");
     Recorder::init(version, init_params, game_install_path.string());
+    Recorder::set_update_server_callback(server_update);
     telemetry_initialized = true;
 
     // If the input side of the plugin was loaded first, initialize the server
