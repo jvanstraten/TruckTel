@@ -1,0 +1,47 @@
+# TruckTel example with Nuxt
+
+## Disclaimer
+
+This is the first web app I've made in 15 years, so odds are that if you're
+reading this you know what you're doing a LOT better than I do. Take this
+example with a large grain of salt.
+
+## Setup
+
+Make sure to install dependencies:
+
+```bash
+npm install
+```
+
+## Development Server
+
+Start the development server on `http://localhost:3000`:
+
+```bash
+npm run dev
+```
+
+[trucktel.js](app/trucktel.js) will detect that it's running in development
+mode, and divert the websocket to the port that the game is configured to
+listen on (default 8080). But the game must of course be running with TruckTel
+installed for the app to be able to connect to anything.
+
+The demo needs a [custom config file](trucktel/config.yaml). Be sure to copy it
+to a TruckTel app directory. You can leave `www` empty during development.
+
+## Production
+
+To get the application to run entirely from TruckTel, generate a static version
+of the app:
+
+```bash
+npm run generate
+```
+
+Then copy the output from `.output/public` to the `www` directory of the
+TruckTel app, and go to (in this case) `http://localhost:8080` to see the app
+as served by the game.
+
+Refer to the main README.md file of this repository for app distribution
+guidelines.
