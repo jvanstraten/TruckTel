@@ -26,6 +26,7 @@ set(FKYAML_VERSION "v0.4.2")
 set(FKYAML_SHA256 1ffdf64da3d560bb86a3c477c6d11718e9a724e8a8c5d5326bd09a3a7689cdcf)
 set(ASIO_VERSION "asio-1-32-0")
 set(WEBSOCKETPP_VERSION "0.8.2")
+set(MDNS_VERSION "1.4.3")
 
 # Declare external content.
 include(FetchContent)
@@ -50,6 +51,12 @@ if(NOT websocketpp_POPULATED)
     FetchContent_Populate(websocketpp QUIET GIT_REPOSITORY "https://github.com/zaphoyd/websocketpp.git" GIT_TAG "${WEBSOCKETPP_VERSION}")
 endif()
 
+# Likewise for mdns.
+FetchContent_GetProperties(mdns)
+if(NOT mdns_POPULATED)
+    FetchContent_Populate(mdns QUIET GIT_REPOSITORY "https://github.com/mjansson/mdns" GIT_TAG "${MDNS_VERSION}")
+endif()
+
 # Generate version header file.
 configure_file(
         src/version.h.in
@@ -62,6 +69,7 @@ configure_file(
 # within the directory that contains the game binary.
 add_library(trucktel SHARED
         src/trucktel.cpp
+        src/license.h
         src/api.h
         src/logger.cpp
         src/logger.h
@@ -92,8 +100,11 @@ add_library(trucktel SHARED
         src/server/database.cpp
         src/server/websocket.h
         src/server/websocket.cpp
+        src/mdns/server_thread.h
+        src/mdns/server_thread.cpp
+        src/mdns/server.h
+        src/mdns/server.cpp
         ${asio_SOURCE_DIR}/asio/src/asio.cpp
-        src/license.h
 )
 target_link_libraries(trucktel
         PRIVATE nlohmann_json::nlohmann_json
@@ -105,6 +116,7 @@ target_include_directories(trucktel
         PRIVATE "${fkyaml_SOURCE_DIR}/include"
         PRIVATE "${asio_SOURCE_DIR}/asio/include"
         PRIVATE "${websocketpp_SOURCE_DIR}"
+        PRIVATE "${mdns_SOURCE_DIR}"
 )
 target_compile_definitions(trucktel
         PRIVATE ASIO_SEPARATE_COMPILATION ASIO_STANDALONE
@@ -116,12 +128,15 @@ target_compile_definitions(trucktel
 # change the function linkage within C++ because it's defined by the SCS header
 # files.
 if(MSVC)
-target_link_options(trucktel PRIVATE
-        /EXPORT:scs_telemetry_init
-        /EXPORT:scs_telemetry_shutdown
-        /EXPORT:scs_input_init
-        /EXPORT:scs_input_shutdown
-)
+    target_link_options(trucktel PRIVATE
+            /EXPORT:scs_telemetry_init
+            /EXPORT:scs_telemetry_shutdown
+            /EXPORT:scs_input_init
+            /EXPORT:scs_input_shutdown
+    )
+
+    # Required by mDNS.
+    target_link_libraries(trucktel PUBLIC iphlpapi ws2_32)
 endif()
 
 # Dummy executable for (very) basic testing.

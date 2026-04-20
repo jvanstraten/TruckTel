@@ -8,6 +8,7 @@
 #include "input.h"
 #include "license.h"
 #include "logger.h"
+#include "mdns/server_thread.h"
 #include "recorder/recorder.h"
 #include "server/server_thread.h"
 #include "version.h"
@@ -149,14 +150,24 @@ static void common_shutdown() {
 // the server thread is running (aside from explicitly-locked things for the
 // actual communication).
 
+/// mDNS server.
+static std::unique_ptr<MdnsServerThread> mdns_server;
+
 /// Initializes the server thread. Must be called only when both sides of the
 /// plugin have finished initializing.
 static void server_init() {
     if (servers.empty()) return;
     Logger::info("Initializing server thread(s)...");
+
+    // Start HTTP server for each application.
     for (auto &server : servers) {
         server.start();
     }
+
+    // Initialize and start mDNS server.
+    mdns_server =
+        std::make_unique<MdnsServerThread>(std::map<uint16_t, std::string>());
+    mdns_server->start();
 }
 
 /// Instructs the servers to fetch new data from the recorder.
@@ -170,13 +181,23 @@ static void server_update() {
 static void server_shutdown() {
     if (servers.empty()) return;
     Logger::info("Shutting down server(s)...");
+
+    // Send stop signal to all server threads.
     for (auto &server : servers) {
         server.stop();
     }
+    if (mdns_server) mdns_server->stop();
+
+    // Wait for all server threads to stop.
     for (auto &server : servers) {
         server.join();
     }
+    if (mdns_server) mdns_server->join();
+
+    // Destroy server thread managers.
     servers.clear();
+    mdns_server.reset();
+
     Logger::info("All servers have shut down");
 }
 

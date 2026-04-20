@@ -1,11 +1,13 @@
 #include "server_thread.h"
 
+#include <mdns.h>
+
 #include "logger.h"
 #include "server.h"
 
-void ServerThread::main() {
+void MdnsServerThread::main() {
     try {
-        server->init(configuration);
+        server->init(services);
         {
             std::unique_lock lock(state_mutex);
             init_success.store(true);
@@ -13,7 +15,7 @@ void ServerThread::main() {
         state_cv.notify_all();
         server->run();
     } catch (std::exception &e) {
-        Logger::error("fatal error in server: %s", e.what());
+        Logger::error("fatal error in mDNS server: %s", e.what());
         {
             std::unique_lock lock(state_mutex);
             server_crashed.store(true);
@@ -22,37 +24,19 @@ void ServerThread::main() {
     }
 }
 
-ServerThread::ServerThread(const std::filesystem::path &app_path)
-    : configuration(load_app_config(app_path)) {}
+MdnsServerThread::MdnsServerThread(std::map<uint16_t, std::string> services)
+    : services(std::move(services)) {}
 
-uint16_t ServerThread::port() const {
-    return configuration.port;
-}
-
-const InputChannelDescriptors &ServerThread::get_input_descriptors() const {
-    return configuration.input_channel_descriptors;
-}
-
-void ServerThread::start() {
-    server = std::make_unique<Server>();
-    thread = std::thread(&ServerThread::main, this);
+void MdnsServerThread::start() {
+    server = std::make_unique<MdnsServer>();
+    thread = std::thread(&MdnsServerThread::main, this);
     std::unique_lock lk(state_mutex);
     state_cv.wait(lk, [this] {
         return init_success.load() || server_crashed.load();
     });
 }
 
-void ServerThread::update() {
-    if (!server) return;
-    if (server_crashed.load()) {
-        thread.join();
-        server.reset();
-        return;
-    }
-    server->update();
-}
-
-void ServerThread::stop() {
+void MdnsServerThread::stop() {
     if (!server) return;
     if (server_crashed.load()) {
         thread.join();
@@ -62,13 +46,13 @@ void ServerThread::stop() {
     server->stop();
 }
 
-void ServerThread::join() {
+void MdnsServerThread::join() {
     if (!server) return;
     thread.join();
     server.reset();
 }
 
-ServerThread::~ServerThread() {
+MdnsServerThread::~MdnsServerThread() {
     if (server) server->stop();
     if (thread.joinable()) thread.join();
 }
