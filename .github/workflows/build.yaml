@@ -55,8 +55,33 @@ jobs:
           name: output-windows
           path: build\Release\trucktel.dll
 
+  generate-example:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: lts/*
+
+      - run: |
+          cd examples/NuxtTruckTelExample
+          npm install
+          npm run generate
+          mkdir -p example/www
+          cp trucktel/config.yaml example
+          cp -r .output/public/* example/www
+
+      - name: Upload
+        uses: actions/upload-artifact@v7
+        with:
+          name: output-example
+          path: examples/NuxtTruckTelExample/example
+
   release:
-    needs: build
+    needs:
+      - build
+      - generate-example
     if: ${{ startsWith(github.ref, 'refs/tags/') }}
     runs-on: ubuntu-latest
     steps:
@@ -69,6 +94,11 @@ jobs:
         with:
           name: output-linux
           path: build
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: output-example
+          path: build/example
 
       - name: Build binary release package
         run: |

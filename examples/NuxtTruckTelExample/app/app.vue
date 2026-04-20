@@ -17,6 +17,7 @@ const trucktel = new TruckTelSocket("dash");
 trucktel.current = current_state;
 trucktel.latest = latest_state;
 trucktel.throttle = 0;
+trucktel.dev_host = "localhost:8081";
 trucktel.open();
 
 onUnmounted(() => {

@@ -1,6 +1,6 @@
 ---
 # Which port the server should listen on.
-port: 8080
+port: 8081
 
 # Which content types the static server should use. 'if' is a regex that's
 # matched against the filename; if it matches, the content type in 'then'
