@@ -66,16 +66,11 @@ nlohmann::json json_resolve_path(
                 data_ptr = &data_ptr->at(std::stoul(element));
             }
         } catch (const std::exception &e) {
-            Logger::verbose("path %s -> failure %s", e.what());
-            Logger::verbose("in data %s", data_ptr->dump().c_str());
             return nullptr;
         }
 
         // Stop once we've completed iterating over the path.
         if (pos == std::string::npos) {
-            Logger::verbose(
-                "path %s -> %s", path.c_str(), data_ptr->dump().c_str()
-            );
             return *data_ptr;
         }
 
