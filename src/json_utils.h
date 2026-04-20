@@ -72,6 +72,7 @@ nlohmann::json named_values_to_json(
 ///    omitted;
 ///  - object items that exist in previous_data but not in new_data are returned
 ///    mapping to null.
+/// Keys mapping to null are treated as if they don't exist.
 nlohmann::json json_delta_encode(
     const nlohmann::json &new_data, const nlohmann::json &previous_data
 );

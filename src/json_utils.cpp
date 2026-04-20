@@ -216,13 +216,14 @@ nlohmann::json json_delta_encode(
     // first.
     nlohmann::json result = {};
     for (const auto &[key, new_value] : new_data.items()) {
+        if (new_value.is_null()) continue;
 
         // If this key does not exist in the previous object, copy the new value
-        // into the result if it is not trivial (null, empty object, or empty
-        // array). Otherwise, perform delta-encoding recursively.
+        // into the result. Otherwise, perform delta-encoding recursively.
         const auto previous_value_it = previous_data.find(key);
         nlohmann::json delta;
-        if (previous_value_it == previous_data.end()) {
+        if (previous_value_it == previous_data.end() ||
+            previous_value_it->is_null()) {
             delta = new_value;
         } else {
             delta = json_delta_encode(new_value, *previous_value_it);
@@ -238,7 +239,9 @@ nlohmann::json json_delta_encode(
     // Check for keys that exist in previous_data but not in new_data. Insert
     // nulls for those to signal the removal.
     for (const auto &[key, previous_value] : previous_data.items()) {
-        if (!new_data.count(key)) {
+        if (previous_value.is_null()) continue;
+        const auto new_value_it = new_data.find(key);
+        if (new_value_it == new_data.end() || new_value_it->is_null()) {
             result[key] = nullptr;
         }
     }
