@@ -8,6 +8,7 @@
 #include "database.h"
 #include "http.h"
 #include "websocket.h"
+#include "worker.h"
 #include "wspp_config.h"
 
 /// Exception class used to return 404 errors.
@@ -17,8 +18,11 @@ struct FileNotFound : std::runtime_error {
 
 /// WebsocketPP server, initially derived from the telemetry_server example
 /// class.
-class Server {
+class Server final : public AbstractWorker {
 private:
+    /// Configuration object.
+    const Configuration &config;
+
     /// WebsocketPP server endpoint.
     wspp::Server endpoint;
 
@@ -48,9 +52,6 @@ private:
 
     /// Document root for serving static files.
     HttpHandler http_handler;
-
-    // Telemetry data
-    uint64_t count = 0;
 
     /// Restarts the timer for periodic calls.
     void set_timer();
@@ -82,12 +83,15 @@ private:
     void on_shutdown();
 
 public:
+    /// Constructor.
+    explicit Server(const Configuration &config);
+
     /// Initializes the server. Call from a worker thread.
-    void init(const Configuration &config);
+    void init() override;
 
     /// Starts the server. Call from the same worker thread that called init().
     /// This will not return until the server is shut down.
-    void run();
+    void run() override;
 
     /// Hint from the game thread that new data is available and the server
     /// thread should poll again soon.

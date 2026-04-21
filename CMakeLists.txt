@@ -62,6 +62,7 @@ configure_file(
 # within the directory that contains the game binary.
 add_library(trucktel SHARED
         src/trucktel.cpp
+        src/license.h
         src/api.h
         src/logger.cpp
         src/logger.h
@@ -69,6 +70,7 @@ add_library(trucktel SHARED
         src/json_utils.cpp
         src/input.h
         src/input.cpp
+        src/worker.h
         src/recorder/event.cpp
         src/recorder/event.h
         src/recorder/configuration.h
@@ -92,8 +94,16 @@ add_library(trucktel SHARED
         src/server/database.cpp
         src/server/websocket.h
         src/server/websocket.cpp
+        src/mdns/server_thread.h
+        src/mdns/server_thread.cpp
+        src/mdns/config.h
+        src/mdns/config.cpp
+        src/mdns/server.h
+        src/mdns/server.cpp
+        src/mdns/string_table.h
+        src/mdns/string_table.cpp
+        src/mdns/mdns.h
         ${asio_SOURCE_DIR}/asio/src/asio.cpp
-        src/license.h
 )
 target_link_libraries(trucktel
         PRIVATE nlohmann_json::nlohmann_json
@@ -116,12 +126,15 @@ target_compile_definitions(trucktel
 # change the function linkage within C++ because it's defined by the SCS header
 # files.
 if(MSVC)
-target_link_options(trucktel PRIVATE
-        /EXPORT:scs_telemetry_init
-        /EXPORT:scs_telemetry_shutdown
-        /EXPORT:scs_input_init
-        /EXPORT:scs_input_shutdown
-)
+    target_link_options(trucktel PRIVATE
+            /EXPORT:scs_telemetry_init
+            /EXPORT:scs_telemetry_shutdown
+            /EXPORT:scs_input_init
+            /EXPORT:scs_input_shutdown
+    )
+
+    # Required by mDNS.
+    target_link_libraries(trucktel PUBLIC iphlpapi ws2_32)
 endif()
 
 # Dummy executable for (very) basic testing.

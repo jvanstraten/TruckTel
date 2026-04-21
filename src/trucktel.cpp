@@ -8,6 +8,7 @@
 #include "input.h"
 #include "license.h"
 #include "logger.h"
+#include "mdns/server_thread.h"
 #include "recorder/recorder.h"
 #include "server/server_thread.h"
 #include "version.h"
@@ -38,6 +39,9 @@ static std::filesystem::path trucktel_path;
 
 /// List of application servers.
 static std::list<ServerThread> servers;
+
+/// mDNS configuration.
+static std::unique_ptr<MdnsConfiguration> mdns_configuration;
 
 /// Initializes logic common to both the telemetry and input sides of the
 /// plugin. This includes the logger and environment detection. These things
@@ -92,6 +96,9 @@ static void common_init(const scs_sdk_init_params_v100_t &init_params) {
     // Write to log file within the trucktel directory.
     Logger::set_file((trucktel_path / LOG_FILENAME).string());
 
+    // Load the mDNS configuration file.
+    mdns_configuration = std::make_unique<MdnsConfiguration>(trucktel_path);
+
     // Each subdirectory within the trucktel directory represents a separate
     // app, each with its own configuration file. If there is no app yet, a
     // default one is generated.
@@ -108,6 +115,7 @@ static void common_init(const scs_sdk_init_params_v100_t &init_params) {
             const auto port = servers.back().port();
             if (ports_used.insert(port).second) {
                 Logger::info("%s will run on port %d", app_name.c_str(), port);
+                mdns_configuration->register_app(app_name, port);
             } else {
                 Logger::error(
                     "%s wants to use port %d, which is already in use.",
@@ -149,14 +157,23 @@ static void common_shutdown() {
 // the server thread is running (aside from explicitly-locked things for the
 // actual communication).
 
+/// mDNS server.
+static std::unique_ptr<MdnsServerThread> mdns_server;
+
 /// Initializes the server thread. Must be called only when both sides of the
 /// plugin have finished initializing.
 static void server_init() {
     if (servers.empty()) return;
     Logger::info("Initializing server thread(s)...");
+
+    // Start HTTP server for each application.
     for (auto &server : servers) {
         server.start();
     }
+
+    // Initialize and start mDNS server.
+    mdns_server = std::make_unique<MdnsServerThread>(*mdns_configuration);
+    mdns_server->start();
 }
 
 /// Instructs the servers to fetch new data from the recorder.
@@ -170,13 +187,23 @@ static void server_update() {
 static void server_shutdown() {
     if (servers.empty()) return;
     Logger::info("Shutting down server(s)...");
+
+    // Send stop signal to all server threads.
     for (auto &server : servers) {
         server.stop();
     }
+    if (mdns_server) mdns_server->stop();
+
+    // Wait for all server threads to stop.
     for (auto &server : servers) {
         server.join();
     }
+    if (mdns_server) mdns_server->join();
+
+    // Destroy server thread managers.
     servers.clear();
+    mdns_server.reset();
+
     Logger::info("All servers have shut down");
 }
 

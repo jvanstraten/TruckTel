@@ -78,7 +78,9 @@ void Server::on_shutdown() {
     }
 }
 
-void Server::init(const Configuration &config) {
+Server::Server(const Configuration &config) : config(config) {}
+
+void Server::init() {
     // Configure the HTTP handler.
     http_handler.configure(
         config.document_root, config.content_types, database
