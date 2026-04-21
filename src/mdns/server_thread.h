@@ -2,18 +2,21 @@
 
 #include <atomic>
 #include <condition_variable>
-#include <map>
+#include <filesystem>
 #include <mutex>
-#include <string>
 #include <thread>
 
+#include "config.h"
+
+/// Avoid mdns.h from needing to be included transitively by including this.
+/// Apparently there is some funky incompatibility between it and fkYAML.h.
 class MdnsServer;
 
 /// Class managing a worker thread to run the telemetry server in.
 class MdnsServerThread {
 
-    /// Service map from port number to app name.
-    const std::map<uint16_t, std::string> services;
+    /// Configuration for the mDNS service.
+    MdnsConfiguration configuration;
 
     /// The associated server instance.
     std::unique_ptr<MdnsServer> server;
@@ -39,7 +42,7 @@ class MdnsServerThread {
 
 public:
     /// Constructor. Doesn't start the thread yet.
-    explicit MdnsServerThread(std::map<uint16_t, std::string> services);
+    explicit MdnsServerThread(const MdnsConfiguration &configuration);
 
     /// Starts running the server.
     void start();

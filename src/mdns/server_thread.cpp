@@ -1,13 +1,12 @@
 #include "server_thread.h"
 
-#include <mdns.h>
-
 #include "logger.h"
+#include "mdns.h"
 #include "server.h"
 
 void MdnsServerThread::main() {
     try {
-        server->init(services);
+        server->init(configuration);
         {
             std::unique_lock lock(state_mutex);
             init_success.store(true);
@@ -24,8 +23,8 @@ void MdnsServerThread::main() {
     }
 }
 
-MdnsServerThread::MdnsServerThread(std::map<uint16_t, std::string> services)
-    : services(std::move(services)) {}
+MdnsServerThread::MdnsServerThread(const MdnsConfiguration &configuration)
+    : configuration(configuration) {}
 
 void MdnsServerThread::start() {
     server = std::make_unique<MdnsServer>();

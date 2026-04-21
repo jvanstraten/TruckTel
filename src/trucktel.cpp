@@ -40,6 +40,9 @@ static std::filesystem::path trucktel_path;
 /// List of application servers.
 static std::list<ServerThread> servers;
 
+/// mDNS configuration.
+static std::unique_ptr<MdnsConfiguration> mdns_configuration;
+
 /// Initializes logic common to both the telemetry and input sides of the
 /// plugin. This includes the logger and environment detection. These things
 /// are initialized from whichever side of the plugin is initialized by the
@@ -93,6 +96,9 @@ static void common_init(const scs_sdk_init_params_v100_t &init_params) {
     // Write to log file within the trucktel directory.
     Logger::set_file((trucktel_path / LOG_FILENAME).string());
 
+    // Load the mDNS configuration file.
+    mdns_configuration = std::make_unique<MdnsConfiguration>(trucktel_path);
+
     // Each subdirectory within the trucktel directory represents a separate
     // app, each with its own configuration file. If there is no app yet, a
     // default one is generated.
@@ -109,6 +115,7 @@ static void common_init(const scs_sdk_init_params_v100_t &init_params) {
             const auto port = servers.back().port();
             if (ports_used.insert(port).second) {
                 Logger::info("%s will run on port %d", app_name.c_str(), port);
+                mdns_configuration->register_app(app_name, port);
             } else {
                 Logger::error(
                     "%s wants to use port %d, which is already in use.",
@@ -165,8 +172,7 @@ static void server_init() {
     }
 
     // Initialize and start mDNS server.
-    mdns_server =
-        std::make_unique<MdnsServerThread>(std::map<uint16_t, std::string>());
+    mdns_server = std::make_unique<MdnsServerThread>(*mdns_configuration);
     mdns_server->start();
 }
 

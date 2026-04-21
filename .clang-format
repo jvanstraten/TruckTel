@@ -165,7 +165,7 @@ IncludeCategories:
     Priority: 3
     SortPriority: 4
     CaseSensitive: false
-  - Regex: <(asio|websocketpp|mdns)
+  - Regex: <(asio|websocketpp)
     Priority: 4
     SortPriority: 5
     CaseSensitive: false

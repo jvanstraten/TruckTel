@@ -26,7 +26,6 @@ set(FKYAML_VERSION "v0.4.2")
 set(FKYAML_SHA256 1ffdf64da3d560bb86a3c477c6d11718e9a724e8a8c5d5326bd09a3a7689cdcf)
 set(ASIO_VERSION "asio-1-32-0")
 set(WEBSOCKETPP_VERSION "0.8.2")
-set(MDNS_VERSION "1.4.3")
 
 # Declare external content.
 include(FetchContent)
@@ -49,12 +48,6 @@ FetchContent_MakeAvailable(asio)
 FetchContent_GetProperties(websocketpp)
 if(NOT websocketpp_POPULATED)
     FetchContent_Populate(websocketpp QUIET GIT_REPOSITORY "https://github.com/zaphoyd/websocketpp.git" GIT_TAG "${WEBSOCKETPP_VERSION}")
-endif()
-
-# Likewise for mdns.
-FetchContent_GetProperties(mdns)
-if(NOT mdns_POPULATED)
-    FetchContent_Populate(mdns QUIET GIT_REPOSITORY "https://github.com/mjansson/mdns" GIT_TAG "${MDNS_VERSION}")
 endif()
 
 # Generate version header file.
@@ -102,8 +95,13 @@ add_library(trucktel SHARED
         src/server/websocket.cpp
         src/mdns/server_thread.h
         src/mdns/server_thread.cpp
+        src/mdns/config.h
+        src/mdns/config.cpp
         src/mdns/server.h
         src/mdns/server.cpp
+        src/mdns/string_table.h
+        src/mdns/string_table.cpp
+        src/mdns/mdns.h
         ${asio_SOURCE_DIR}/asio/src/asio.cpp
 )
 target_link_libraries(trucktel
@@ -116,7 +114,6 @@ target_include_directories(trucktel
         PRIVATE "${fkyaml_SOURCE_DIR}/include"
         PRIVATE "${asio_SOURCE_DIR}/asio/include"
         PRIVATE "${websocketpp_SOURCE_DIR}"
-        PRIVATE "${mdns_SOURCE_DIR}"
 )
 target_compile_definitions(trucktel
         PRIVATE ASIO_SEPARATE_COMPILATION ASIO_STANDALONE

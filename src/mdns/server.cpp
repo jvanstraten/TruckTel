@@ -1,14 +1,7 @@
 #include "server.h"
 
 #include <cstring>
-
-#ifdef _WIN32
-#include <iphlpapi.h>
-#else
-#include <ifaddrs.h>
-#include <netdb.h>
-#include <netinet/in.h>
-#endif
+#include <string>
 
 #include "logger.h"
 
@@ -41,14 +34,27 @@
 // SOFTWARE.
 
 static std::string sockaddr_to_string(
-    const sockaddr *addr, const socklen_t addrlen
+    const sockaddr &addr, const socklen_t addrlen
 ) {
     char host[NI_MAXHOST] = {0};
     const int ret = getnameinfo(
-        addr, addrlen, host, NI_MAXHOST, nullptr, NI_MAXSERV, NI_NUMERICHOST
+        &addr, addrlen, host, NI_MAXHOST, nullptr, NI_MAXSERV,
+        NI_NUMERICHOST | NI_NUMERICSERV
     );
     if (ret != 0) throw std::runtime_error("getnameinfo() failed");
     return host;
+}
+
+static std::string sockaddr_to_string(const sockaddr_in &addr) {
+    return sockaddr_to_string(
+        reinterpret_cast<const sockaddr &>(addr), sizeof(sockaddr_in)
+    );
+}
+
+static std::string sockaddr_to_string(const sockaddr_in6 &addr) {
+    return sockaddr_to_string(
+        reinterpret_cast<const sockaddr &>(addr), sizeof(sockaddr_in6)
+    );
 }
 
 void MdnsServer::find_local_ips() {
@@ -100,18 +106,7 @@ void MdnsServer::find_local_ips() {
                     address->sin_addr.S_un.S_un_b.s_b4 == 1) {
                     continue;
                 }
-                try {
-                    local_ipv4 = std::make_pair<uint32_t, std::string>(
-                        address->sin_addr.S_un.S_addr,
-                        sockaddr_to_string(
-                            unicast->Address.lpSockaddr, sizeof(sockaddr_in)
-                        )
-                    );
-                } catch (const std::exception &e) {
-                    Logger::error(
-                        "Error getting local IPv4 address: %s", e.what()
-                    );
-                }
+                local_ipv4 = *address;
             } else if (unicast->Address.lpSockaddr->sa_family == AF_INET6) {
                 if (local_ipv6) continue;
                 if (unicast->DadState != NldsPreferred) continue;
@@ -127,22 +122,7 @@ void MdnsServer::find_local_ips() {
                         IPV6_LEN
                     ))
                     continue;
-                try {
-                    local_ipv6 = std::make_pair<
-                        std::array<uint8_t, IPV6_LEN>, std::string>(
-                        {},
-                        sockaddr_to_string(
-                            unicast->Address.lpSockaddr, sizeof(sockaddr_in6)
-                        )
-                    );
-                    memcpy(
-                        local_ipv6->first.data(), &address->sin6_addr, IPV6_LEN
-                    );
-                } catch (const std::exception &e) {
-                    Logger::error(
-                        "Error getting local IPv6 address: %s", e.what()
-                    );
-                }
+                local_ipv6 = *address;
             }
         }
     }
@@ -160,35 +140,26 @@ void MdnsServer::find_local_ips() {
 
     for (auto ifa = ifaddr; ifa; ifa = ifa->ifa_next) {
         if (!ifa->ifa_addr) continue;
+        if (!(ifa->ifa_flags & IFF_UP) || !(ifa->ifa_flags & IFF_MULTICAST))
+            continue;
+        if ((ifa->ifa_flags & IFF_LOOPBACK) ||
+            (ifa->ifa_flags & IFF_POINTOPOINT))
+            continue;
         if (ifa->ifa_addr->sa_family == AF_INET) {
+            if (local_ipv4) continue;
             const auto address =
                 reinterpret_cast<struct sockaddr_in *>(ifa->ifa_addr);
             if (address->sin_addr.s_addr == htonl(INADDR_LOOPBACK)) continue;
-            try {
-                local_ipv4 = std::make_pair<uint32_t, std::string>(
-                    std::move(address->sin_addr.s_addr),
-                    sockaddr_to_string(ifa->ifa_addr, sizeof(sockaddr_in))
-                );
-            } catch (const std::exception &e) {
-                Logger::error("Error getting local IPv4 address: %s", e.what());
-            }
+            local_ipv4 = *address;
         } else if (ifa->ifa_addr->sa_family == AF_INET6) {
+            if (local_ipv6) continue;
             const auto address =
                 reinterpret_cast<struct sockaddr_in6 *>(ifa->ifa_addr);
             if (!memcmp(address->sin6_addr.s6_addr, IPV6_LOCALHOST, 16))
                 continue;
             if (!memcmp(address->sin6_addr.s6_addr, IPV6_LOCALHOST_MAPPED, 16))
                 continue;
-            try {
-                local_ipv6 =
-                    std::make_pair<std::array<uint8_t, IPV6_LEN>, std::string>(
-                        {},
-                        sockaddr_to_string(ifa->ifa_addr, sizeof(sockaddr_in6))
-                    );
-                memcpy(local_ipv6->first.data(), &address->sin6_addr, IPV6_LEN);
-            } catch (const std::exception &e) {
-                Logger::error("Error getting local IPv6 address: %s", e.what());
-            }
+            local_ipv6 = *address;
         }
     }
 
@@ -237,6 +208,11 @@ void MdnsServer::close_sockets() {
     sockets.clear();
 }
 
+/// Converts an mdns_string_t to a std::string.
+static std::string mdns_string_to_std(const mdns_string_t &mdns_string) {
+    return {mdns_string.str, mdns_string.length};
+}
+
 int MdnsServer::service_callback(
     int sock,
     const struct sockaddr *from,
@@ -261,315 +237,316 @@ int MdnsServer::service_callback(
     if (!user_data) return 0;
     MdnsServer &instance = *static_cast<MdnsServer *>(user_data);
 
-    /*auto fromaddrstr = sockaddr_to_string(from, addrlen);
-    const char* entrytype = (entry == MDNS_ENTRYTYPE_ANSWER) ?
-                            "answer" :
-                            ((entry == MDNS_ENTRYTYPE_AUTHORITY) ? "authority" :
-    "additional"); char namebuffer[256]; char entrybuffer[256]; mdns_string_t
-    entrystr = mdns_string_extract(data, size, &name_offset, entrybuffer,
-    sizeof(entrybuffer)); if (rtype == MDNS_RECORDTYPE_SRV) { mdns_record_srv_t
-    srv = mdns_record_parse_srv(data, size, record_offset, record_length,
-                                                      namebuffer,
-    sizeof(namebuffer)); Logger::info("%s : %s %.*s SRV %.*s priority %d weight
-    %d port %d", fromaddrstr.c_str(), entrytype, MDNS_STRING_FORMAT(entrystr),
-               MDNS_STRING_FORMAT(srv.name), srv.priority, srv.weight,
-    srv.port); } else if (rtype == MDNS_RECORDTYPE_A && instance.local_ipv4) {
-        mdns
-        mdns_query_answer(sock, from, addrlen, sendbuffer, sizeof(sendbuffer),
-    query_id, service_record->service, service_length, service_record->hostname,
-    strlen(service_record->hostname), service_record->address_ipv4,
-    service_record->address_ipv6, (uint16_t)service_record->port, txt_record,
-    sizeof(txt_record));
+    // Get the requested name from the query.
+    char name_buffer[256];
+    const auto name_mdns = mdns_string_extract(
+        data, size, &name_offset, name_buffer, sizeof(name_buffer)
+    );
+    const auto name = mdns_string_to_std(name_mdns);
 
-        struct sockaddr_in addr;
-        addr.sin_family = AF_INET;
-        mdns_record_parse_a(data, size, record_offset, record_length, &addr);
-        auto addrstr = sockaddr_to_string(reinterpret_cast<sockaddr*>(&addr),
-    sizeof(addr)); Logger::info("%s : %s %.*s A %s", fromaddrstr.c_str(),
-    entrytype, MDNS_STRING_FORMAT(entrystr), addrstr.c_str());
+    // Answers to send in mDNS library form.
+    std::vector<mdns_record_t> answers;
 
-    } else if (rtype == MDNS_RECORDTYPE_AAAA && instance.local_ipv6) {
-        struct sockaddr_in6 addr;
-        addr.sin6_family = AF_INET6;
-        mdns_record_parse_aaaa(data, size, record_offset, record_length, &addr);
-        auto addrstr = sockaddr_to_string(reinterpret_cast<sockaddr*>(&addr),
-    sizeof(addr)); Logger::info("%s : %s %.*s AAAA %s", fromaddrstr.c_str(),
-    entrytype, MDNS_STRING_FORMAT(entrystr), addrstr.c_str());
+    // Handle service discovery queries.
+    if (name == DNS_SD_SERVICE) {
+        if (rtype == MDNS_RECORDTYPE_PTR || rtype == MDNS_RECORDTYPE_ANY) {
+
+            // The PTR query was for the DNS-SD domain, send answers with a PTR
+            // record for each of the services we advertise.
+            answers = instance.dns_sd_ptr_records;
+        }
     }
-    return 0;*/
 
-    const char dns_sd[] = "_services._dns-sd._udp.local.";
+    // Handle service name to instance queries.
+    if (answers.empty()) {
+        const auto &services = instance.configuration->get_service_to_port();
+        const auto service_it = services.find(name);
+        if (service_it != services.end()) {
+            const auto port = service_it->second;
+            if (rtype == MDNS_RECORDTYPE_PTR || rtype == MDNS_RECORDTYPE_ANY) {
 
-    char namebuffer[256];
-    size_t offset = name_offset;
-    mdns_string_t name = mdns_string_extract(
-        data, size, &offset, namebuffer, sizeof(namebuffer)
+                // The PTR query was for one of our services. Answer a PTR
+                // record reverse mapping the queried service name to our
+                // service instance name, and add additional records containing
+                // the SRV record mapping the service instance name to our
+                // qualified hostname and port, as well as any IPv4/IPv6 address
+                // for the hostname as A/AAAA records.
+                answers.emplace_back(instance.app_ptr_records[port]);
+                answers.emplace_back(instance.app_srv_records[port]);
+                if (instance.record_a) {
+                    answers.emplace_back(*instance.record_a);
+                }
+                if (instance.record_aaaa) {
+                    answers.emplace_back(*instance.record_aaaa);
+                }
+            }
+        }
+    }
+
+    // Handle service instance queries.
+    if (answers.empty()) {
+        const auto &instances =
+            instance.configuration->get_service_instance_to_port();
+        const auto instance_it = instances.find(name);
+        if (instance_it != instances.end()) {
+            const auto port = instance_it->second;
+            if (rtype == MDNS_RECORDTYPE_SRV || rtype == MDNS_RECORDTYPE_ANY) {
+
+                // The SRV query was for one of our service instances. Answer an
+                // SRV record mapping the service instance name to our qualified
+                // hostname and port, as well as any IPv4/IPv6 address for the
+                // hostname as A/AAAA records.
+                answers.emplace_back(instance.app_srv_records[port]);
+                if (instance.record_a) {
+                    answers.emplace_back(*instance.record_a);
+                }
+                if (instance.record_aaaa) {
+                    answers.emplace_back(*instance.record_aaaa);
+                }
+                answers.emplace_back(instance.app_txt_records[port]);
+            }
+        }
+    }
+
+    // Handle domain queries.
+    if (answers.empty()) {
+        if (name == instance.configuration->get_qualified_hostname()) {
+            if ((rtype == MDNS_RECORDTYPE_A || rtype == MDNS_RECORDTYPE_ANY) &&
+                instance.record_a) {
+
+                // The A query was for our qualified hostname, and we have an
+                // IPv4 address. Answer with an A record mapping the hostname to
+                // an IPv4 address, as well as any IPv6 address for the
+                // hostname.
+                answers.emplace_back(*instance.record_a);
+                if (instance.record_aaaa) {
+                    answers.emplace_back(*instance.record_aaaa);
+                }
+
+            } else if ((rtype == MDNS_RECORDTYPE_AAAA ||
+                        rtype == MDNS_RECORDTYPE_ANY) &&
+                       instance.record_aaaa) {
+
+                // The AAAA query was for our qualified hostname, and we have an
+                // IPv6 address. Answer with an AAAA record mapping the hostname
+                // to an IPv6 address, as well as any IPv4 address for the
+                // hostname.
+                answers.emplace_back(*instance.record_aaaa);
+                if (instance.record_a) {
+                    answers.emplace_back(*instance.record_a);
+                }
+            }
+        }
+    }
+
+    // If we don't have anything to answer, exit here.
+    if (answers.empty()) {
+        return 0;
+    }
+
+    // Whether we've been requested to answer as unicast or as multicast.
+    const bool unicast = (rclass & MDNS_UNICAST_RESPONSE) != 0;
+
+    // Print the answers we're sending.
+    if (instance.configuration->is_verbose()) {
+        // Log the query if verbose logging is enabled.
+        const char *rtype_str;
+        switch (rtype) {
+            case MDNS_RECORDTYPE_A:
+                rtype_str = "A";
+                break;
+            case MDNS_RECORDTYPE_PTR:
+                rtype_str = "PTR";
+                break;
+            case MDNS_RECORDTYPE_TXT:
+                rtype_str = "TXT";
+                break;
+            case MDNS_RECORDTYPE_AAAA:
+                rtype_str = "AAAA";
+                break;
+            case MDNS_RECORDTYPE_SRV:
+                rtype_str = "SRV";
+                break;
+            case MDNS_RECORDTYPE_ANY:
+                rtype_str = "ANY";
+                break;
+            default:
+                rtype_str = nullptr;
+                break;
+        }
+        if (rtype_str) {
+            Logger::verbose("mDNS query %s %s", rtype_str, name.c_str());
+        } else {
+            Logger::verbose("mDNS query %d %s", rtype, name.c_str());
+        }
+        Logger::verbose(
+            "mDNS answer unicast%s:", unicast ? "" : " and multicast"
+        );
+        for (const auto &answer : answers) {
+            switch (answer.type) {
+                case MDNS_RECORDTYPE_A:
+                    Logger::verbose(
+                        " - A: %s",
+                        sockaddr_to_string(answer.data.a.addr).c_str()
+                    );
+                    break;
+                case MDNS_RECORDTYPE_AAAA:
+                    Logger::verbose(
+                        " - AAAA: %s",
+                        sockaddr_to_string(answer.data.aaaa.addr).c_str()
+                    );
+                    break;
+                case MDNS_RECORDTYPE_PTR:
+                    Logger::verbose(
+                        " - PTR: %.*s", MDNS_STRING_FORMAT(answer.data.ptr.name)
+                    );
+                    break;
+                case MDNS_RECORDTYPE_TXT:
+                    Logger::verbose(
+                        " - TXT: %.*s = %.*s",
+                        MDNS_STRING_FORMAT(answer.data.txt.key),
+                        MDNS_STRING_FORMAT(answer.data.txt.value)
+                    );
+                    break;
+                case MDNS_RECORDTYPE_SRV:
+                    Logger::verbose(
+                        " - SRV: %.*s:%d",
+                        MDNS_STRING_FORMAT(answer.data.srv.name),
+                        answer.data.srv.port
+                    );
+                    break;
+                default:
+                    Logger::verbose(" - unknown record type");
+                    break;
+            }
+        }
+    }
+
+    // Send the actual response.
+    char buffer[4096] = {};
+    if (!unicast) {
+        mdns_query_answer_multicast(
+            sock, buffer, sizeof(buffer), answers.front(), 0, 0,
+            &answers.front() + 1, answers.size() - 1
+        );
+    }
+
+    // Multicast packets are often dropped by routers, firewalls, whatever. So
+    // even if a unicast response was not requested, send one anyway.
+    mdns_query_answer_unicast(
+        sock, from, addrlen, buffer, sizeof(buffer), query_id,
+        static_cast<mdns_record_type_t>(rtype), name_mdns.str, name_mdns.length,
+        answers.front(), 0, 0, &answers.front() + 1, answers.size() - 1
     );
 
-    const char *record_name = 0;
-    if (rtype == MDNS_RECORDTYPE_PTR)
-        record_name = "PTR";
-    else if (rtype == MDNS_RECORDTYPE_SRV)
-        record_name = "SRV";
-    else if (rtype == MDNS_RECORDTYPE_A)
-        record_name = "A";
-    else if (rtype == MDNS_RECORDTYPE_AAAA)
-        record_name = "AAAA";
-    else if (rtype == MDNS_RECORDTYPE_TXT)
-        record_name = "TXT";
-    else if (rtype == MDNS_RECORDTYPE_ANY)
-        record_name = "ANY";
-    else
-        return 0;
-    Logger::info("mDNS query %s %.*s", record_name, MDNS_STRING_FORMAT(name));
-
-    /*if ((name.length == (sizeof(dns_sd) - 1)) &&
-        (strncmp(name.str, dns_sd, sizeof(dns_sd) - 1) == 0)) {
-            if ((rtype == MDNS_RECORDTYPE_PTR) || (rtype ==
-    MDNS_RECORDTYPE_ANY)) {
-                    // The PTR query was for the DNS-SD domain, send answer with
-    a PTR record for the
-                    // service name we advertise, typically on the
-    "<_service-name>._tcp.local." format
-
-                    // Answer PTR record reverse mapping
-    "<_service-name>._tcp.local." to
-                    // "<hostname>.<_service-name>._tcp.local."
-                    mdns_record_t answer = {};
-                answer.name = name;
-                answer.type = MDNS_RECORDTYPE_PTR;
-                answer.data.ptr.name.str = "kokolores"; // TODO
-                answer.data.ptr.name.length = strlen(answer.data.ptr.name.str);
-
-                    // Send the answer, unicast or multicast depending on flag
-    in query uint16_t unicast = (rclass & MDNS_UNICAST_RESPONSE); printf("  -->
-    answer %.*s (%s)\n", MDNS_STRING_FORMAT(answer.data.ptr.name), (unicast ?
-    "unicast" : "multicast"));
-
-                    if (unicast) {
-                            mdns_query_answer_unicast(sock, from, addrlen,
-    sendbuffer, sizeof(sendbuffer), query_id, rtype, name.str, name.length,
-    answer, 0, 0, 0, 0); } else { mdns_query_answer_multicast(sock, sendbuffer,
-    sizeof(sendbuffer), answer, 0, 0, 0, 0);
-                    }
-            }
-    } else if ((name.length == service->service.length) &&
-               (strncmp(name.str, service->service.str, name.length) == 0)) {
-            if ((rtype == MDNS_RECORDTYPE_PTR) || (rtype ==
-    MDNS_RECORDTYPE_ANY)) {
-                    // The PTR query was for our service (usually
-    "<_service-name._tcp.local"), answer a PTR
-                    // record reverse mapping the queried service name to our
-    service instance name
-                    // (typically on the
-    "<hostname>.<_service-name>._tcp.local." format), and add
-                    // additional records containing the SRV record mapping the
-    service instance name to our
-                    // qualified hostname (typically "<hostname>.local.") and
-    port, as well as any IPv4/IPv6
-                    // address for the hostname as A/AAAA records, and two test
-    TXT records
-
-                    // Answer PTR record reverse mapping
-    "<_service-name>._tcp.local." to
-                    // "<hostname>.<_service-name>._tcp.local."
-                    mdns_record_t answer = service->record_ptr;
-
-                    mdns_record_t additional[5] = {0};
-                    size_t additional_count = 0;
-
-                    // SRV record mapping
-    "<hostname>.<_service-name>._tcp.local." to
-                    // "<hostname>.local." with port. Set weight & priority to
-    0. additional[additional_count++] = service->record_srv;
-
-                    // A/AAAA records mapping "<hostname>.local." to IPv4/IPv6
-    addresses if (service->address_ipv4.sin_family == AF_INET)
-                            additional[additional_count++] = service->record_a;
-                    if (service->address_ipv6.sin6_family == AF_INET6)
-                            additional[additional_count++] =
-    service->record_aaaa;
-
-                    // Add two test TXT records for our service instance name,
-    will be coalesced into
-                    // one record with both key-value pair strings by the
-    library additional[additional_count++] = service->txt_record[0];
-                    additional[additional_count++] = service->txt_record[1];
-
-                    // Send the answer, unicast or multicast depending on flag
-    in query uint16_t unicast = (rclass & MDNS_UNICAST_RESPONSE); printf("  -->
-    answer %.*s (%s)\n", MDNS_STRING_FORMAT(service->record_ptr.data.ptr.name),
-                           (unicast ? "unicast" : "multicast"));
-
-                    if (unicast) {
-                            mdns_query_answer_unicast(sock, from, addrlen,
-    sendbuffer, sizeof(sendbuffer), query_id, rtype, name.str, name.length,
-    answer, 0, 0, additional, additional_count); } else {
-                            mdns_query_answer_multicast(sock, sendbuffer,
-    sizeof(sendbuffer), answer, 0, 0, additional, additional_count);
-                    }
-            }
-    } else if ((name.length == service->service_instance.length) &&
-               (strncmp(name.str, service->service_instance.str, name.length) ==
-    0)) { if ((rtype == MDNS_RECORDTYPE_SRV) || (rtype == MDNS_RECORDTYPE_ANY))
-    {
-                    // The SRV query was for our service instance (usually
-                    // "<hostname>.<_service-name._tcp.local"), answer a SRV
-    record mapping the service
-                    // instance name to our qualified hostname (typically
-    "<hostname>.local.") and port, as
-                    // well as any IPv4/IPv6 address for the hostname as A/AAAA
-    records, and two test TXT
-                    // records
-
-                    // Answer PTR record reverse mapping
-    "<_service-name>._tcp.local." to
-                    // "<hostname>.<_service-name>._tcp.local."
-                    mdns_record_t answer = service->record_srv;
-
-                    mdns_record_t additional[5] = {0};
-                    size_t additional_count = 0;
-
-                    // A/AAAA records mapping "<hostname>.local." to IPv4/IPv6
-    addresses if (service->address_ipv4.sin_family == AF_INET)
-                            additional[additional_count++] = service->record_a;
-                    if (service->address_ipv6.sin6_family == AF_INET6)
-                            additional[additional_count++] =
-    service->record_aaaa;
-
-                    // Add two test TXT records for our service instance name,
-    will be coalesced into
-                    // one record with both key-value pair strings by the
-    library additional[additional_count++] = service->txt_record[0];
-                    additional[additional_count++] = service->txt_record[1];
-
-                    // Send the answer, unicast or multicast depending on flag
-    in query uint16_t unicast = (rclass & MDNS_UNICAST_RESPONSE); printf("  -->
-    answer %.*s port %d (%s)\n",
-                           MDNS_STRING_FORMAT(service->record_srv.data.srv.name),
-    service->port, (unicast ? "unicast" : "multicast"));
-
-                    if (unicast) {
-                            mdns_query_answer_unicast(sock, from, addrlen,
-    sendbuffer, sizeof(sendbuffer), query_id, rtype, name.str, name.length,
-    answer, 0, 0, additional, additional_count); } else {
-                            mdns_query_answer_multicast(sock, sendbuffer,
-    sizeof(sendbuffer), answer, 0, 0, additional, additional_count);
-                    }
-            }
-    } else if ((name.length == service->hostname_qualified.length) &&
-               (strncmp(name.str, service->hostname_qualified.str, name.length)
-    == 0)) { if (((rtype == MDNS_RECORDTYPE_A) || (rtype ==
-    MDNS_RECORDTYPE_ANY)) && (service->address_ipv4.sin_family == AF_INET)) {
-                    // The A query was for our qualified hostname (typically
-    "<hostname>.local.") and we
-                    // have an IPv4 address, answer with an A record mappiing
-    the hostname to an IPv4
-                    // address, as well as any IPv6 address for the hostname,
-    and two test TXT records
-
-                    // Answer A records mapping "<hostname>.local." to IPv4
-    address mdns_record_t answer = service->record_a;
-
-                    mdns_record_t additional[5] = {0};
-                    size_t additional_count = 0;
-
-                    // AAAA record mapping "<hostname>.local." to IPv6 addresses
-                    if (service->address_ipv6.sin6_family == AF_INET6)
-                            additional[additional_count++] =
-    service->record_aaaa;
-
-                    // Add two test TXT records for our service instance name,
-    will be coalesced into
-                    // one record with both key-value pair strings by the
-    library additional[additional_count++] = service->txt_record[0];
-                    additional[additional_count++] = service->txt_record[1];
-
-                    // Send the answer, unicast or multicast depending on flag
-    in query uint16_t unicast = (rclass & MDNS_UNICAST_RESPONSE); mdns_string_t
-    addrstr = ip_address_to_string( addrbuffer, sizeof(addrbuffer), (struct
-    sockaddr*)&service->record_a.data.a.addr,
-                        sizeof(service->record_a.data.a.addr));
-                    printf("  --> answer %.*s IPv4 %.*s (%s)\n",
-    MDNS_STRING_FORMAT(service->record_a.name), MDNS_STRING_FORMAT(addrstr),
-    (unicast ? "unicast" : "multicast"));
-
-                    if (unicast) {
-                            mdns_query_answer_unicast(sock, from, addrlen,
-    sendbuffer, sizeof(sendbuffer), query_id, rtype, name.str, name.length,
-    answer, 0, 0, additional, additional_count); } else {
-                            mdns_query_answer_multicast(sock, sendbuffer,
-    sizeof(sendbuffer), answer, 0, 0, additional, additional_count);
-                    }
-            } else if (((rtype == MDNS_RECORDTYPE_AAAA) || (rtype ==
-    MDNS_RECORDTYPE_ANY)) && (service->address_ipv6.sin6_family == AF_INET6)) {
-                    // The AAAA query was for our qualified hostname (typically
-    "<hostname>.local.") and we
-                    // have an IPv6 address, answer with an AAAA record mappiing
-    the hostname to an IPv6
-                    // address, as well as any IPv4 address for the hostname,
-    and two test TXT records
-
-                    // Answer AAAA records mapping "<hostname>.local." to IPv6
-    address mdns_record_t answer = service->record_aaaa;
-
-                    mdns_record_t additional[5] = {0};
-                    size_t additional_count = 0;
-
-                    // A record mapping "<hostname>.local." to IPv4 addresses
-                    if (service->address_ipv4.sin_family == AF_INET)
-                            additional[additional_count++] = service->record_a;
-
-                    // Add two test TXT records for our service instance name,
-    will be coalesced into
-                    // one record with both key-value pair strings by the
-    library additional[additional_count++] = service->txt_record[0];
-                    additional[additional_count++] = service->txt_record[1];
-
-                    // Send the answer, unicast or multicast depending on flag
-    in query uint16_t unicast = (rclass & MDNS_UNICAST_RESPONSE); mdns_string_t
-    addrstr = ip_address_to_string(addrbuffer, sizeof(addrbuffer), (struct
-    sockaddr*)&service->record_aaaa.data.aaaa.addr,
-                                             sizeof(service->record_aaaa.data.aaaa.addr));
-                    printf("  --> answer %.*s IPv6 %.*s (%s)\n",
-                           MDNS_STRING_FORMAT(service->record_aaaa.name),
-    MDNS_STRING_FORMAT(addrstr), (unicast ? "unicast" : "multicast"));
-
-                    if (unicast) {
-                            mdns_query_answer_unicast(sock, from, addrlen,
-    sendbuffer, sizeof(sendbuffer), query_id, rtype, name.str, name.length,
-    answer, 0, 0, additional, additional_count); } else {
-                            mdns_query_answer_multicast(sock, sendbuffer,
-    sizeof(sendbuffer), answer, 0, 0, additional, additional_count);
-                    }
-            }
-    }*/
     return 0;
 }
 
-void MdnsServer::init(const std::map<uint16_t, std::string> &new_services) {
-    services = new_services;
+void MdnsServer::init(const MdnsConfiguration &new_configuration) {
+    configuration = &new_configuration;
 
     // Find our own IP address(es).
     find_local_ips();
-    if (local_ipv4)
-        Logger::info("Local IPv4 address is %s", local_ipv4->second.c_str());
-    if (local_ipv6)
-        Logger::info("Local IPv6 address is %s", local_ipv6->second.c_str());
+    if (local_ipv4) {
+        Logger::info(
+            "Local IPv4 address is %s", sockaddr_to_string(*local_ipv4).c_str()
+        );
+    }
+    if (local_ipv6) {
+        Logger::info(
+            "Local IPv6 address is %s", sockaddr_to_string(*local_ipv6).c_str()
+        );
+    }
+
+    // Stop initializing here if mDNS is disabled by the user.
+    if (!configuration->is_mdns_enabled()) {
+        Logger::info("mDNS is disabled by the user.");
+        return;
+    }
+
+    // Stop initialization if we didn't find any IP addresses to advertise.
     if (!local_ipv4 && !local_ipv6) {
         Logger::warn("mDNS disabled: could not determine local IP address.");
         return;
+    }
+
+    // Pre-construct all the response records.
+    mdns_record_t record;
+    auto dns_sd_service_mdns = mdns_strings.allocate(DNS_SD_SERVICE);
+    auto qualified_hostname_mdns =
+        mdns_strings.allocate(configuration->get_qualified_hostname());
+    auto app_key_mdns = mdns_strings.allocate("app");
+    for (const auto &[port, app] : configuration->get_port_to_app()) {
+        auto app_name_mdns = mdns_strings.allocate(app);
+        auto service = configuration->app_to_service(app);
+        auto service_mdns = mdns_strings.allocate(service);
+        auto service_instance = configuration->service_to_instance(service);
+        auto service_instance_mdns = mdns_strings.allocate(service_instance);
+
+        // Service-discovery PTR records.
+        record.name = dns_sd_service_mdns;
+        record.type = MDNS_RECORDTYPE_PTR;
+        record.data.ptr.name = service_mdns;
+        record.rclass = 0;
+        record.ttl = 0;
+        dns_sd_ptr_records.emplace_back(record);
+
+        // PTR record reverse mapping "<_service-name>._tcp.local." to
+        // "<hostname>.<_service-name>._tcp.local.".
+        record.name = service_mdns;
+        record.type = MDNS_RECORDTYPE_PTR;
+        record.data.ptr.name = service_instance_mdns;
+        record.rclass = 0;
+        record.ttl = 0;
+        app_ptr_records[port] = record;
+
+        // SRV record mapping "<hostname>.<_service-name>._tcp.local." to
+        // "<hostname>.local." with port. Set weight & priority to 0.
+        record.name = service_instance_mdns;
+        record.type = MDNS_RECORDTYPE_SRV;
+        record.data.srv.name = qualified_hostname_mdns;
+        record.data.srv.port = port;
+        record.data.srv.priority = 0;
+        record.data.srv.weight = 0;
+        record.rclass = 0;
+        record.ttl = 0;
+        app_srv_records[port] = record;
+
+        // TXT record.
+        record.name = service_instance_mdns;
+        record.type = MDNS_RECORDTYPE_TXT;
+        record.data.txt.key = app_key_mdns;
+        record.data.txt.value = app_name_mdns;
+        record.rclass = 0;
+        record.ttl = 0;
+        app_txt_records[port] = record;
+    }
+    if (local_ipv4) {
+        record.name = qualified_hostname_mdns;
+        record.type = MDNS_RECORDTYPE_A;
+        record.data.a.addr = *local_ipv4;
+        record.rclass = 0;
+        record.ttl = 0;
+        record_a = record;
+    }
+    if (local_ipv6) {
+        record.name = qualified_hostname_mdns;
+        record.type = MDNS_RECORDTYPE_AAAA;
+        record.data.aaaa.addr = *local_ipv6;
+        record.rclass = 0;
+        record.ttl = 0;
+        record_aaaa = record;
     }
 
     // Open sockets.
     open_sockets();
     if (sockets.empty()) {
         Logger::warn("mDNS disabled: could not open any socket.");
-        return;
     }
 }
 
 void MdnsServer::run() {
+    if (!configuration) return;
     if (sockets.empty()) return;
 
     // Based on mDNS-cpp mDNS::runMainLoop().
