@@ -75,6 +75,22 @@ this, all app-specific files are scoped in their own directory. TruckTel will
 load each of these with their own server thread, each running from its own
 port.
 
+Besides running the HTTP/websocket servers, TruckTel responds to mDNS queries
+(aka zeroconf aka Avahi aka Bonjour) for `trucktel.local`. That means that,
+in theory, so you don't need to know your PC's IP address to connect to it
+from a different device on your local network... provided there's no firewall
+or router shenanigans that block the queries. It also announces service
+information for every app running on TruckTel individually; specifically,
+`_trucktel-<app>._tcp`. This could allow e.g. a mobile app to determine the
+port number that its associated TruckTel app runs on, allowing players to
+reconfigure the port in case of conflict with another service or TruckTel app.
+
+The mDNS subsystem has its own configuration file in TruckTel's main directory.
+In particular, this configuration file allows the hostname to be changed from
+`trucktel.local` to something else, which would be necessary e.g. for a LAN
+party. The mDNS subsystem can also be turned off entirely here in case it gives
+issues.
+
 ## How do I use it?
 
 If you're developing an app and want to use TruckTel as a telemetry source,
@@ -99,6 +115,7 @@ the directory structure should look like this:
              '- trucktel
                  |- log.txt             <- log output file
                  |- LICENSE             <- required by dependencies
+                 |- mdns.yaml           <- mDNS configuration file
                  '- your-app-name       <- rename for your app
                      |- config.yaml     <- created by the library,
                      |                     but you should provide one
@@ -119,9 +136,11 @@ What you should probably provide to the user is a zip file containing
           - `index.html` landing page
 
 along with instructions for the player on where to extract this, or an
-installer to automate that. This is exactly the contents of the `trucktel.zip`
-files that you can download from the
-[releases](https://github.com/jvanstraten/TruckTel/releases)!
+installer to automate that. All these files (and a few more) are contained in
+the `trucktel.zip` files that you can download from the
+[releases](https://github.com/jvanstraten/TruckTel/releases).
+Note that TruckTel will also auto-generate these files if they don't exist
+yet when it's loaded by the game.
 
 If you nevertheless want to build TruckTel yourself, doing so should be
 fairly straightforward. You should only need a recent-ish CMake and a C++
@@ -164,6 +183,7 @@ I'm using:
  - [Asio](https://github.com/chriskohlhoff/asio): Boost
  - [Websocket++](https://github.com/chriskohlhoff/asio):
    [custom](https://github.com/zaphoyd/websocketpp/blob/master/COPYING)
+ - [mDNS](https://github.com/mjansson/mdns) (slightly modified): Unlicense
 
 So putting a less restrictive license than MIT on my own code wouldn't really
 help. None of these are copyleft, but except for Asio they technically require

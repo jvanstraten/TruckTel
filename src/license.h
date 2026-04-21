@@ -284,6 +284,14 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+-------------------------------------------------------------------------------
+mdns
+-------------------------------------------------------------------------------
+
+TruckTel contains a slightly modified version of
+https://github.com/mjansson/mdns, originally written by Mattias Jansson and
+dedicated to the public domain by them via the Unlicense.
 )";
 
 /// Filename that the license is written to.
