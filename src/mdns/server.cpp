@@ -259,7 +259,7 @@ int MdnsServer::service_callback(
 
     // Handle service name to instance queries.
     if (answers.empty()) {
-        const auto &services = instance.configuration->get_service_to_port();
+        const auto &services = instance.configuration.get_service_to_port();
         const auto service_it = services.find(name);
         if (service_it != services.end()) {
             const auto port = service_it->second;
@@ -286,7 +286,7 @@ int MdnsServer::service_callback(
     // Handle service instance queries.
     if (answers.empty()) {
         const auto &instances =
-            instance.configuration->get_service_instance_to_port();
+            instance.configuration.get_service_instance_to_port();
         const auto instance_it = instances.find(name);
         if (instance_it != instances.end()) {
             const auto port = instance_it->second;
@@ -310,7 +310,7 @@ int MdnsServer::service_callback(
 
     // Handle domain queries.
     if (answers.empty()) {
-        if (name == instance.configuration->get_qualified_hostname()) {
+        if (name == instance.configuration.get_qualified_hostname()) {
             if ((rtype == MDNS_RECORDTYPE_A || rtype == MDNS_RECORDTYPE_ANY) &&
                 instance.record_a) {
 
@@ -348,7 +348,7 @@ int MdnsServer::service_callback(
     const bool unicast = (rclass & MDNS_UNICAST_RESPONSE) != 0;
 
     // Print the answers we're sending.
-    if (instance.configuration->is_verbose()) {
+    if (instance.configuration.is_verbose()) {
         // Log the query if verbose logging is enabled.
         const char *rtype_str;
         switch (rtype) {
@@ -442,8 +442,10 @@ int MdnsServer::service_callback(
     return 0;
 }
 
-void MdnsServer::init(const MdnsConfiguration &new_configuration) {
-    configuration = &new_configuration;
+MdnsServer::MdnsServer(const MdnsConfiguration &configuration)
+    : configuration(configuration) {}
+
+void MdnsServer::init() {
 
     // Find our own IP address(es).
     find_local_ips();
@@ -459,7 +461,7 @@ void MdnsServer::init(const MdnsConfiguration &new_configuration) {
     }
 
     // Stop initializing here if mDNS is disabled by the user.
-    if (!configuration->is_mdns_enabled()) {
+    if (!configuration.is_mdns_enabled()) {
         Logger::info("mDNS is disabled by the user.");
         return;
     }
@@ -474,13 +476,13 @@ void MdnsServer::init(const MdnsConfiguration &new_configuration) {
     mdns_record_t record;
     auto dns_sd_service_mdns = mdns_strings.allocate(DNS_SD_SERVICE);
     auto qualified_hostname_mdns =
-        mdns_strings.allocate(configuration->get_qualified_hostname());
+        mdns_strings.allocate(configuration.get_qualified_hostname());
     auto app_key_mdns = mdns_strings.allocate("app");
-    for (const auto &[port, app] : configuration->get_port_to_app()) {
+    for (const auto &[port, app] : configuration.get_port_to_app()) {
         auto app_name_mdns = mdns_strings.allocate(app);
-        auto service = configuration->app_to_service(app);
+        auto service = configuration.app_to_service(app);
         auto service_mdns = mdns_strings.allocate(service);
-        auto service_instance = configuration->service_to_instance(service);
+        auto service_instance = configuration.service_to_instance(service);
         auto service_instance_mdns = mdns_strings.allocate(service_instance);
 
         // Service-discovery PTR records.
@@ -546,7 +548,6 @@ void MdnsServer::init(const MdnsConfiguration &new_configuration) {
 }
 
 void MdnsServer::run() {
-    if (!configuration) return;
     if (sockets.empty()) return;
 
     // Based on mDNS-cpp mDNS::runMainLoop().
@@ -579,6 +580,7 @@ void MdnsServer::run() {
             }
         }
     }
+    close_sockets();
 }
 
 void MdnsServer::stop() {

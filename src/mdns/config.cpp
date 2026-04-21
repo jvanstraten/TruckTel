@@ -45,21 +45,6 @@ MdnsConfiguration::MdnsConfiguration(
             << std::endl;
         ofs << CONFIG_KEY_ENABLE << ": true" << std::endl;
         ofs << std::endl;
-        ofs << "# Whether the 'landing' HTTP server should be enabled. This "
-               "server always"
-            << std::endl;
-        ofs << "# listens on port 80 and redirects to the port that a "
-               "particular app runs on,"
-            << std::endl;
-        ofs << "# so you don't need to type the port either, just "
-               "'trucktel.local/<app>', or"
-            << std::endl;
-        ofs << "# 'trucktel.local' if there is only one. You can disable it if "
-               "you want to"
-            << std::endl;
-        ofs << "# reserve port 80 for something else." << std::endl;
-        ofs << CONFIG_KEY_LANDING << ": true" << std::endl;
-        ofs << std::endl;
         ofs << "# The hostname that TruckTel should respond to. This is the "
                "'trucktel' part in"
             << std::endl;
@@ -84,7 +69,6 @@ MdnsConfiguration::MdnsConfiguration(
     try {
         auto yaml = fkyaml::node::deserialize(ifs);
         enable_mdns = yaml[CONFIG_KEY_ENABLE].get_value<bool>();
-        enable_landing = yaml[CONFIG_KEY_LANDING].get_value<bool>();
         hostname = yaml[CONFIG_KEY_HOSTNAME].get_value<std::string>();
         qualified_hostname = hostname + "." + MDNS_DOMAIN + ".";
         verbose = yaml[CONFIG_KEY_VERBOSE].get_value<bool>();
@@ -125,10 +109,6 @@ void MdnsConfiguration::register_app(
 
 bool MdnsConfiguration::is_mdns_enabled() const {
     return enable_mdns;
-}
-
-bool MdnsConfiguration::is_landing_enabled() const {
-    return enable_landing;
 }
 
 bool MdnsConfiguration::is_verbose() const {

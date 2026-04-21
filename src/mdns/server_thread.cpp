@@ -1,57 +1,25 @@
 #include "server_thread.h"
 
 #include "logger.h"
-#include "mdns.h"
 #include "server.h"
 
-void MdnsServerThread::main() {
-    try {
-        server->init(configuration);
-        {
-            std::unique_lock lock(state_mutex);
-            init_success.store(true);
-        }
-        state_cv.notify_all();
-        server->run();
-    } catch (std::exception &e) {
-        Logger::error("fatal error in mDNS server: %s", e.what());
-        {
-            std::unique_lock lock(state_mutex);
-            server_crashed.store(true);
-        }
-        state_cv.notify_all();
-    }
-}
-
-MdnsServerThread::MdnsServerThread(const MdnsConfiguration &configuration)
-    : configuration(configuration) {}
+MdnsServerThread::MdnsServerThread(MdnsConfiguration config)
+    : config(std::move(config)) {}
 
 void MdnsServerThread::start() {
-    server = std::make_unique<MdnsServer>();
-    thread = std::thread(&MdnsServerThread::main, this);
-    std::unique_lock lk(state_mutex);
-    state_cv.wait(lk, [this] {
-        return init_success.load() || server_crashed.load();
-    });
+    mdns.start(std::make_unique<MdnsServer>(config));
 }
 
 void MdnsServerThread::stop() {
-    if (!server) return;
-    if (server_crashed.load()) {
-        thread.join();
-        server.reset();
-        return;
+    if (const auto worker = mdns.get_worker()) {
+        worker->stop();
     }
-    server->stop();
 }
 
 void MdnsServerThread::join() {
-    if (!server) return;
-    thread.join();
-    server.reset();
+    mdns.join();
 }
 
 MdnsServerThread::~MdnsServerThread() {
-    if (server) server->stop();
-    if (thread.joinable()) thread.join();
+    stop();
 }

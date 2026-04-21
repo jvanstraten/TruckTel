@@ -14,9 +14,6 @@ private:
     /// Whether to enable the mDNS subsystem.
     static constexpr auto CONFIG_KEY_ENABLE = "enable";
 
-    /// Whether to enable the redirection HTTP server on port 80.
-    static constexpr auto CONFIG_KEY_LANDING = "landing";
-
     /// Which hostname to advertise via mDNS.
     static constexpr auto CONFIG_KEY_HOSTNAME = "hostname";
 
@@ -34,9 +31,6 @@ private:
 
     /// Whether to enable mDNS.
     bool enable_mdns;
-
-    /// Whether to enable the landing server.
-    bool enable_landing;
 
     /// Whether verbose logging is enabled.
     bool verbose;
@@ -69,9 +63,6 @@ public:
 
     /// Whether mDNS should be enabled.
     [[nodiscard]] bool is_mdns_enabled() const;
-
-    /// Whether the landing server should be enabled.
-    [[nodiscard]] bool is_landing_enabled() const;
 
     /// Whether verbose logging is enabled.
     [[nodiscard]] bool is_verbose() const;

@@ -7,6 +7,7 @@
 #include "config.h"
 #include "mdns.h"
 #include "string_table.h"
+#include "worker.h"
 
 // Must come after mdns.h...
 #ifdef _WIN32
@@ -19,7 +20,7 @@
 #endif
 
 /// Class managing the mDNS server in its worker thread.
-class MdnsServer {
+class MdnsServer final : public AbstractWorker {
 private:
     /// Number of bytes in an IPv6 address.
     static constexpr auto IPV6_LEN = 16;
@@ -37,7 +38,7 @@ private:
     static constexpr auto DNS_SD_SERVICE = "_services._dns-sd._udp.local.";
 
     /// Service map from port number to app name.
-    const MdnsConfiguration *configuration = nullptr;
+    const MdnsConfiguration &configuration;
 
     /// Local IPv4 address. If there are multiple, the first enumerated address
     /// is assumed to be the primary one.
@@ -105,16 +106,19 @@ private:
     );
 
 public:
+    /// Constructor.
+    explicit MdnsServer(const MdnsConfiguration &configuration);
+
     /// Initializes the server.
-    void init(const MdnsConfiguration &new_configuration);
+    void init() override;
 
     /// Starts listening. This doesn't return until stop() is called from
     /// another thread.
-    void run();
+    void run() override;
 
     /// Stops listening. Call from another thread to get run() to return.
     void stop();
 
     /// Destructor.
-    ~MdnsServer();
+    ~MdnsServer() override;
 };

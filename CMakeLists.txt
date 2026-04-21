@@ -70,6 +70,7 @@ add_library(trucktel SHARED
         src/json_utils.cpp
         src/input.h
         src/input.cpp
+        src/worker.h
         src/recorder/event.cpp
         src/recorder/event.h
         src/recorder/configuration.h

@@ -1,48 +1,24 @@
 #pragma once
 
-#include <atomic>
-#include <condition_variable>
-#include <filesystem>
-#include <mutex>
-#include <thread>
-
 #include "config.h"
+#include "worker.h"
 
-/// Avoid mdns.h from needing to be included transitively by including this.
-/// Apparently there is some funky incompatibility between it and fkYAML.h.
+// Avoid mdns.h from needing to be included transitively by including this.
+// Apparently there is some funky incompatibility between it and fkYAML.h.
 class MdnsServer;
 
 /// Class managing a worker thread to run the telemetry server in.
 class MdnsServerThread {
 
     /// Configuration for the mDNS service.
-    MdnsConfiguration configuration;
+    MdnsConfiguration config;
 
-    /// The associated server instance.
-    std::unique_ptr<MdnsServer> server;
-
-    /// Main function for the thread.
-    void main();
-
-    /// Thread handle.
-    std::thread thread;
-
-    /// Condition variable used to notify that the server has been initialized.
-    std::condition_variable state_cv;
-
-    /// Mutex for init_cv.
-    std::mutex state_mutex;
-
-    /// Whether initialization was successful. Guarded by state_mutex and
-    /// state_cv.
-    std::atomic<bool> init_success = false;
-
-    /// Whether the server thread crashed. Guarded by state_mutex and state_cv.
-    std::atomic<bool> server_crashed = false;
+    /// The mDNS worker thread.
+    WorkerThread<MdnsServer> mdns;
 
 public:
     /// Constructor. Doesn't start the thread yet.
-    explicit MdnsServerThread(const MdnsConfiguration &configuration);
+    explicit MdnsServerThread(MdnsConfiguration config);
 
     /// Starts running the server.
     void start();
