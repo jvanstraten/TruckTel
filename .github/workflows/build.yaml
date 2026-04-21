@@ -98,7 +98,7 @@ jobs:
       - uses: actions/download-artifact@v8
         with:
           name: output-example
-          path: build/example
+          path: build/trucktel/example
 
       - name: Build binary release package
         run: |
