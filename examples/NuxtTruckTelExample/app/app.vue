@@ -1,19 +1,19 @@
 <script setup>
 
-import { ref, onUnmounted } from "vue";
+import { reactive, onUnmounted } from "vue";
 import { TruckTelSocket } from "~/trucktel.js";
 
-const current_state = {
-    paused: ref(null),
-    time: ref(null),
-};
+const current_state = reactive({
+    paused: null,
+    time: null,
+});
 
-const latest_state = {
-    time: ref(0),
-    engine: ref(false),
-};
+const latest_state = reactive({
+    time: 0,
+    engine: false,
+});
 
-const trucktel = new TruckTelSocket("dash");
+const trucktel = new TruckTelSocket("example");
 trucktel.current = current_state;
 trucktel.latest = latest_state;
 trucktel.throttle = 0;
