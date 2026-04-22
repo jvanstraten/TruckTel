@@ -26,7 +26,7 @@ content-types:
     then: image/vnd.microsoft.icon
 
 custom-structures:
-  dash:
+  example:
     paused:
       key: frame.paused
     time:
