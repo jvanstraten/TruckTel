@@ -29,6 +29,14 @@ ChannelRecorder::ChannelRecorder() {
         {API_FRAME_CHANNEL_PAUSED_SIMULATION_TIME, SCS_U32_NIL,
          SCS_VALUE_TYPE_u64}
     );
+
+    // The game doesn't generate frames while in the main menu. Make a dummy
+    // frame immediately instead, so frame data is reported as being valid
+    // right from the start, notably the paused flag.
+    scs_telemetry_frame_start_t frame = {};
+    frame.flags = SCS_TELEMETRY_FRAME_START_FLAG_timer_restart;
+    start(frame);
+    end();
 }
 
 size_t ChannelRecorder::register_channel(ChannelMetadata metadata) {

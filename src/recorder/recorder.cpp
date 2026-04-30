@@ -47,7 +47,6 @@ void Recorder::record_event(const scs_event_t event, const void *event_info) {
     switch (event) {
         case SCS_TELEMETRY_EVENT_frame_start:
             Logger::periodic();
-            Logger::periodic();
             if (!event_info) return;
             channels.start(
                 *static_cast<const scs_telemetry_frame_start_t *>(event_info)
