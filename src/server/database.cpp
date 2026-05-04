@@ -1,5 +1,6 @@
 #include "database.h"
 
+#include <fstream>
 #include <sstream>
 
 #include "api.h"
@@ -12,6 +13,8 @@ nlohmann::json Database::get_json_for(const ValueIndex &value_index) const {
             return scs_value_to_json(channel_data.at(value_index.index));
         case ValueSource::CONFIGURATION:
             return configuration_data.at(value_index.index);
+        case ValueSource::USER:
+            return user_data;
         default:
             return nullptr;
     }
@@ -89,8 +92,9 @@ void Database::update_configuration_item(
             configuration_data.emplace_back();
             break;
         case ValueSource::CHANNEL:
-            // Conflict between configuration and channel, apparently?
-            // Ignore the configuration value, channel takes precedence.
+        case ValueSource::USER:
+            // Conflict between configuration and channel/user, apparently?
+            // Ignore the configuration value, channel/user takes precedence.
             return;
         case ValueSource::CONFIGURATION:
             // Configuration item already exists, don't need to add it.
@@ -119,6 +123,49 @@ void Database::update_configuration() {
         for (const auto &attribute : attributes) {
             std::string key = configuration_key + "." + attribute.name;
             update_configuration_item(key, attribute.index, attribute.value);
+        }
+    }
+}
+
+Database::Database(std::filesystem::path user_data_path)
+    : user_data_path(std::move(user_data_path)) {
+    // Try to load the user data file.
+    if (!std::filesystem::is_regular_file(this->user_data_path)) {
+        Logger::info(
+            "user data file not found: %s",
+            this->user_data_path.string().c_str()
+        );
+    } else {
+        std::ifstream ifs;
+        ifs.open(this->user_data_path.string().c_str());
+        if (!ifs.is_open()) {
+            Logger::warn("failed to open user data file");
+        } else {
+            try {
+                auto yaml = fkyaml::node::deserialize(ifs);
+                user_data = yaml_to_json(yaml);
+            } catch (std::exception &e) {
+                Logger::warn("failed to parse user data file: %s", e.what());
+            }
+        }
+    }
+
+    // Make the key for the user data.
+    auto &value_index = get_value_index_for(API_CONFIG_USER, SCS_U32_NIL);
+    value_index.source = ValueSource::USER;
+}
+
+Database::~Database() {
+    // Try to save user data file.
+    std::ofstream ofs;
+    ofs.open(this->user_data_path.string().c_str());
+    if (!ofs.is_open()) {
+        Logger::warn("failed to write user data file");
+    } else {
+        try {
+            ofs << json_to_yaml(user_data);
+        } catch (std::exception &e) {
+            Logger::warn("failed to write user data file: %s", e.what());
         }
     }
 }
@@ -192,4 +239,8 @@ nlohmann::json Database::get_data(const std::vector<std::string> &query) const {
         }
     }
     return "unrecognized method " + structure;
+}
+
+void Database::push_user_data(const nlohmann::json &user_data_delta) {
+    json_delta_apply(user_data, user_data_delta);
 }

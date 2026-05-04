@@ -82,6 +82,9 @@ static constexpr auto CONFIG_OPERATOR_ROUND = "round";
 /// date starting at 0001-01-01T00:00:00Z.
 static constexpr auto CONFIG_OPERATOR_DATE = "date";
 
+/// Name of the user data file.
+static constexpr auto USER_DATA_FILENAME = "user.yaml";
+
 /// Channel types supported by the game.
 enum struct InputChannelType { BINARY, FLOAT };
 
@@ -104,6 +107,9 @@ struct Configuration {
 
     /// Document root to serve from. Empty disables serving static files.
     std::filesystem::path document_root;
+
+    /// Path to the user data file.
+    std::filesystem::path user_data_path;
 
     /// Filename to content-type mapping.
     std::vector<std::pair<std::regex, std::string>> content_types;

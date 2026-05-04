@@ -78,7 +78,8 @@ void Server::on_shutdown() {
     }
 }
 
-Server::Server(const Configuration &config) : config(config) {}
+Server::Server(const Configuration &config)
+    : config(config), database(config.user_data_path) {}
 
 void Server::init() {
     // Configure the HTTP handler.

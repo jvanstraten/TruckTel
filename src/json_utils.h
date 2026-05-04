@@ -77,6 +77,9 @@ nlohmann::json json_delta_encode(
     const nlohmann::json &new_data, const nlohmann::json &previous_data
 );
 
+/// Applies a JSON delta. Returns whether anything changed.
+bool json_delta_apply(nlohmann::json &target, const nlohmann::json &source);
+
 /// Reformats a given JSON object. The format JSON is passed to output initially
 /// and dictates the structure of the returned JSON. It is expected to be a
 /// nested structure (objects and arrays) of objects containing only scalar
@@ -88,3 +91,6 @@ void json_restructure(nlohmann::json &format, const nlohmann::json &data);
 
 /// Converts fkYAML to nlohmann::JSON.
 nlohmann::json yaml_to_json(const fkyaml::node &yaml);
+
+/// Converts nlohmann::JSON to fkYAML.
+fkyaml::node json_to_yaml(const nlohmann::json &json);

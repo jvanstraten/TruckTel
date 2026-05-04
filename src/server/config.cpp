@@ -191,6 +191,9 @@ Configuration load_app_config(const std::filesystem::path &app_path) {
             }
         }
 
+        // Provide a path for the user data storage file.
+        server_config.user_data_path = app_path / USER_DATA_FILENAME;
+
         return server_config;
     } catch (std::exception &e) {
         throw std::runtime_error(
