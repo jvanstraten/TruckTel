@@ -18,24 +18,33 @@ nlohmann::json WebSocket::receive(const std::string &message) {
     try {
         const auto json = nlohmann::json::parse(message);
 
-        // Incoming messages are interpreted as input commands regardless of
-        // websocket endpoint type. These must be query arrays for the input
-        // subsystem.
-        if (!json.is_array()) return "array expected";
-
-        // Flatten the JSON array into strings for the query. This also means
-        // that we're converting value numbers to a string only to then parse
-        // them as a float again... yuck.
-        std::vector<std::string> query;
-        query.emplace_back(API_INPUT_QUERY);
-        for (const auto &json_element : json) {
-            if (json_element.is_string()) {
-                query.emplace_back(json_element.get<std::string>());
-            } else {
-                query.emplace_back(json_element.dump());
+        // If the incoming message is an array, treat it as an input command.
+        // These must be query arrays for the input subsystem.
+        if (json.is_array()) {
+            // Flatten the JSON array into strings for the query. This also
+            // means that we're converting value numbers to a string only to
+            // then parse them as a float again... yuck.
+            std::vector<std::string> query;
+            query.emplace_back(API_INPUT_QUERY);
+            for (const auto &json_element : json) {
+                if (json_element.is_string()) {
+                    query.emplace_back(json_element.get<std::string>());
+                } else {
+                    query.emplace_back(json_element.dump());
+                }
             }
+            return Input::run_query(query);
         }
-        return Input::run_query(query);
+
+        // If the incoming message wasn't an array and also isn't an object,
+        // fail.
+        if (!json.is_object()) return "array or object expected";
+
+        // Push user data if supplied.
+        const auto it = json.find(API_CONFIG_USER);
+        if (it != json.end()) database.push_user_data(it.value());
+
+        return {};
 
     } catch (const std::exception &e) {
         return e.what();
@@ -98,7 +107,7 @@ void WebSocket::update_internal(const bool first) {
 WebSocket::WebSocket(
     wspp::Server::connection_ptr con,
     const DataType data_type,
-    const Database &database,
+    Database &database,
     std::vector<std::string> database_query,
     const unsigned long throttle
 )
@@ -109,7 +118,7 @@ WebSocket::WebSocket(
 }
 
 std::optional<WebSocket> WebSocket::handle_request(
-    const wspp::Server::connection_ptr &con, const Database &database
+    const wspp::Server::connection_ptr &con, Database &database
 ) {
     try {
         // Check that this is a websocket API URL.

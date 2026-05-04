@@ -97,6 +97,8 @@ different ways:
    TruckTel presents the paused state via `frame.paused`.
  - current working directory: used to derive the game installation directory,
    presented via `game.install_dir`.
+ - user data: a non-volatile JSON object that can be updated by your app using
+   the websocket API.
 
 TruckTel presents all data sources to its web API in the same way and in the
 same namespace. This relies on there not being conflicts between configuration
@@ -536,6 +538,35 @@ http://<server>:<port>/api/ws/input
 TruckTel will not send any messages on this websocket, except in direct
 response to an input message that it receives. The response will be equivalent
 to that of an HTTP input command.
+
+### Websocket user data updates
+
+To update your user data structure, send messages to any open websocket of the
+form:
+
+```
+{
+    "user": /* your data here */
+}
+```
+
+You can use this for instance to implement rudimentary data-sharing or
+message-passing between connected clients, or to save configuration data
+common to all clients.
+
+The updates can be delta-coded: send null for objects or array values to clear
+the respective item. Arrays will grow and shrink automatically as needed. Any
+data structure representable with JSON will work, except for null being used to
+indicate removal. It's probably not a good idea to dump huge amounts of data in
+here, though. TruckTel naively copies it around whenever you query anything
+that includes the `user` key, which, for a websocket, happens every frame for
+the (naive) update check.
+
+Data written to this structure is non-volatile. It is saved to the `user.yaml`
+file in your plugin directory when the plugin unloads, and loaded from that
+file when the plugin loads. You can use `sdk reinit` from the game console to
+force a reload without restarting the game. Note that data will probably be
+lost if the game crashes before it can shut down the plugin gracefully.
 
 ## Data reference
 

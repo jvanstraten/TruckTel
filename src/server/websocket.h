@@ -36,7 +36,7 @@ class WebSocket {
     } data_type;
 
     /// Database handle.
-    const Database &database;
+    Database &database;
 
     /// The query command for getting data from the database. Not used for
     /// event websockets.
@@ -60,7 +60,7 @@ class WebSocket {
     void send(const nlohmann::json &data);
 
     /// Handles an incoming websocket message.
-    static nlohmann::json receive(const std::string &message);
+    nlohmann::json receive(const std::string &message);
 
     /// Internal update handler. Does not catch exceptions.
     void update_internal(bool first);
@@ -69,7 +69,7 @@ class WebSocket {
     WebSocket(
         wspp::Server::connection_ptr con,
         DataType data_type,
-        const Database &database,
+        Database &database,
         std::vector<std::string> database_query,
         unsigned long throttle
     );
@@ -78,7 +78,7 @@ public:
     /// Main function for handling a websocket upgrade request. An instance is
     /// returned if the connection was accepted.
     [[nodiscard]] static std::optional<WebSocket> handle_request(
-        const wspp::Server::connection_ptr &con, const Database &database
+        const wspp::Server::connection_ptr &con, Database &database
     );
 
     /// Call from Asio context to update the websocket connection.

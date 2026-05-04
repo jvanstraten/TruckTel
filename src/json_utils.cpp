@@ -249,6 +249,92 @@ nlohmann::json json_delta_encode(
     return result;
 }
 
+bool json_delta_apply(nlohmann::json &target, const nlohmann::json &source) {
+
+    // Handle arrays.
+    if (source.is_array()) {
+
+        // Type change: just copy.
+        if (!target.is_array()) {
+            target = source;
+            return true;
+        }
+
+        // Sync array elements recursively, growing the target array if
+        // necessary.
+        bool changed = false;
+        for (size_t i = 0; i < source.size(); i++) {
+
+            // Delete elements by setting them to null.
+            if (source[i].is_null()) {
+                if (target.size() > i && !target[i].is_null()) {
+                    target[i] = nullptr;
+                    changed = true;
+                }
+                continue;
+            }
+
+            // Grow array if necessary.
+            while (target.size() <= i)
+                target.emplace_back(nullptr);
+
+            // Apply changes recursively.
+            changed |= json_delta_apply(target[i], source[i]);
+        }
+
+        // Shrink the target array if it now ends in null.
+        if (changed) {
+            while (!target.empty() && target.back().is_null()) {
+                target.erase(target.size() - 1);
+            }
+        }
+
+        return changed;
+    }
+
+    // Handle objects.
+    if (source.is_object()) {
+
+        // Type change: just copy.
+        if (!target.is_object()) {
+            target = source;
+            return true;
+        }
+
+        // Sync objects recursively.
+        bool changed = false;
+        for (const auto &it : source.items()) {
+            auto it2 = target.find(it.key());
+
+            // Handle deletions.
+            if (it.value().is_null()) {
+                if (it2 != target.end()) {
+                    target.erase(it2);
+                    changed = true;
+                }
+                continue;
+            }
+
+            // Handle insertions.
+            if (it2 == target.end()) {
+                target[it.key()] = it2.value();
+                changed = true;
+                continue;
+            }
+
+            // Handle changes recursively.
+            changed |= json_delta_apply(it2.value(), it.value());
+        }
+
+        return changed;
+    }
+
+    // For everything else, just set the new value.
+    const bool changed = source != target;
+    if (changed) target = source;
+    return changed;
+}
+
 /// Applies some special post-processing operator to JSON data.
 static nlohmann::json json_apply_operator(
     const nlohmann::json &data, const std::string &op
@@ -450,6 +536,41 @@ nlohmann::json yaml_to_json(const fkyaml::node &yaml) {
             for (const auto &yaml_item : yaml.map_items()) {
                 result[yaml_item.key().get_value<std::string>()] =
                     yaml_to_json(*yaml_item);
+            }
+            return result;
+        }
+    }
+    return nullptr;
+}
+
+fkyaml::node json_to_yaml(const nlohmann::json &json) {
+    switch (json.type()) {
+        case nlohmann::detail::value_t::discarded:
+        case nlohmann::detail::value_t::null:
+            return nullptr;
+        case nlohmann::detail::value_t::boolean:
+            return json.get<nlohmann::json::boolean_t>();
+        case nlohmann::detail::value_t::number_integer:
+            return json.get<nlohmann::json::number_integer_t>();
+        case nlohmann::detail::value_t::number_unsigned:
+            return json.get<nlohmann::json::number_unsigned_t>();
+        case nlohmann::detail::value_t::number_float:
+            return json.get<nlohmann::json::number_float_t>();
+        case nlohmann::detail::value_t::string:
+            return json.get<nlohmann::json::string_t>();
+        case nlohmann::detail::value_t::binary:
+            return json.get<nlohmann::json::binary_t>();
+        case nlohmann::detail::value_t::array: {
+            std::vector<fkyaml::node> result;
+            for (const auto &json_item : json) {
+                result.emplace_back(json_to_yaml(json_item));
+            }
+            return result;
+        }
+        case nlohmann::detail::value_t::object: {
+            std::map<std::string, fkyaml::node> result;
+            for (const auto &json_item : json.items()) {
+                result[json_item.key()] = json_to_yaml(json_item.value());
             }
             return result;
         }

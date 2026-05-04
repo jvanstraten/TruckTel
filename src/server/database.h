@@ -1,5 +1,6 @@
 #pragma once
 
+#include <filesystem>
 #include <map>
 #include <vector>
 
@@ -27,6 +28,9 @@ private:
 
         /// The value should be taken from the configuration dataset.
         CONFIGURATION,
+
+        /// The value should be taken from the user dataset.
+        USER,
     };
 
     /// The place where a value is stored.
@@ -62,10 +66,19 @@ private:
     /// Version of the configuration data.
     uint64_t configuration_version = 0;
 
+    /// User data.
+    nlohmann::json user_data;
+
+    /// Filesystem path for non-volatile storage of user data.
+    std::filesystem::path user_data_path;
+
+    /// Version of the user data.
+    uint64_t user_data_version = 0;
+
     /// Custom data structures configured by the user.
     nlohmann::json custom_structures;
 
-    /// Builds JSON for a scalar based on its indix.
+    /// Builds JSON for a scalar based on its index.
     [[nodiscard]] nlohmann::json get_json_for(
         const ValueIndex &value_index
     ) const;
@@ -99,6 +112,12 @@ private:
     void update_configuration();
 
 public:
+    /// Constructor.
+    explicit Database(std::filesystem::path user_data_path);
+
+    /// Destructor.
+    ~Database();
+
     /// Poll the recorder to update the data in the database.
     void update();
 
@@ -126,4 +145,7 @@ public:
     [[nodiscard]] nlohmann::json get_data(
         const std::vector<std::string> &query
     ) const;
+
+    /// Updates the user data structure with the given delta.
+    void push_user_data(const nlohmann::json &user_data_delta);
 };
