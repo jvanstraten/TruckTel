@@ -26,7 +26,7 @@ content-types:
     then: image/vnd.microsoft.icon
 
 custom-structures:
-  dash:
+  example:
     paused:
       key: frame.paused
     time:
@@ -36,4 +36,6 @@ custom-structures:
 
 input:
   binary:
-    engine: Toggle engine power
+    ignitionoff: Off button
+    ignitionon: On button
+    ignitionstrt: Start button
