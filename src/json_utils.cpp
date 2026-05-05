@@ -377,7 +377,10 @@ static nlohmann::json json_apply_operator(
         if (!data.is_number()) {
             return nullptr;
         }
-        return round(data.get<double>());
+        auto rounded = round(data.get<double>());
+        // Remove sign from negative zero.
+        if (rounded == 0) rounded = 0;
+        return rounded;
     }
 
     // Formats a game time value in minutes as an ISO 8601 date/time value
