@@ -38,6 +38,14 @@ Configuration load_app_config(const std::filesystem::path &app_path) {
         ofs << "# Which port the server should listen on." << std::endl;
         ofs << CONFIG_PORT << ": " << CONFIG_DEFAULT_PORT << std::endl;
         ofs << std::endl;
+        ofs << "# Metadata for your app, displayed on the landing page."
+            << std::endl;
+        ofs << CONFIG_TITLE << ": Default TruckTel app" << std::endl;
+        ofs << CONFIG_SUBTITLE << ": Nothing to see here, move along."
+            << std::endl;
+        ofs << CONFIG_LINK
+            << ": \"https://www.github.com/jvanstraten/TruckTel\"" << std::endl;
+        ofs << std::endl;
         ofs << "# Which content types the static server should use. '"
             << CONFIG_CONTENT_TYPE_FILENAME << "' is a regex that's"
             << std::endl;
@@ -130,6 +138,20 @@ Configuration load_app_config(const std::filesystem::path &app_path) {
 
         // Parse port number.
         server_config.port = yaml[CONFIG_PORT].get_value<uint16_t>();
+
+        // Parse metadata.
+        if (yaml.contains(CONFIG_TITLE)) {
+            server_config.metadata.title =
+                yaml[CONFIG_TITLE].get_value<std::string>();
+        }
+        if (yaml.contains(CONFIG_SUBTITLE)) {
+            server_config.metadata.subtitle =
+                yaml[CONFIG_SUBTITLE].get_value<std::string>();
+        }
+        if (yaml.contains(CONFIG_LINK)) {
+            server_config.metadata.link =
+                yaml[CONFIG_LINK].get_value<std::string>();
+        }
 
         // Set document root.
         server_config.document_root = app_path / CONFIG_DOCUMENT_ROOT_SUBDIR;

@@ -71,6 +71,8 @@ add_library(trucktel SHARED
         src/input.h
         src/input.cpp
         src/worker.h
+        src/os_utils.h
+        src/os_utils.cpp
         src/recorder/event.cpp
         src/recorder/event.h
         src/recorder/configuration.h
@@ -94,6 +96,12 @@ add_library(trucktel SHARED
         src/server/database.cpp
         src/server/websocket.h
         src/server/websocket.cpp
+        src/landing/server_thread.h
+        src/landing/server_thread.cpp
+        src/landing/server.h
+        src/landing/server.cpp
+        src/landing/info.h
+        src/landing/info.cpp
         src/mdns/server_thread.h
         src/mdns/server_thread.cpp
         src/mdns/config.h
@@ -110,6 +118,8 @@ target_link_libraries(trucktel
 )
 target_include_directories(trucktel
         PRIVATE "src"
+        PRIVATE "landing/include/real"
+        PRIVATE "landing/include/placeholder"
         PRIVATE "${CMAKE_CURRENT_BINARY_DIR}"
         PUBLIC "${SCS_SDK_INCLUDE}"
         PRIVATE "${fkyaml_SOURCE_DIR}/include"

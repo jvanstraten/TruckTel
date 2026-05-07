@@ -1,0 +1,24 @@
+{
+    "pluginVersion": "TruckTel 0.1.0",
+    "gameVersion": "Euro Truck Simulator Simulator",
+    "localIpAddress": "192.168.0.196",
+    "mdnsHostname": "trucktel.local",
+    "apps": [
+        {
+            "appDirectory": "working-app",
+            "title": "Working App",
+            "subtitle": "A working app!",
+            "link": "https://github.com/jvanstraten/TruckTel",
+            "port": 8081,
+            "errorMessage": null
+        },
+        {
+            "appDirectory": "bad-app",
+            "title": "Bad App",
+            "subtitle": "A dysfunctional app!",
+            "link": "https://github.com/jvanstraten/TruckTel",
+            "port": 8081,
+            "errorMessage": "port 8081 is already in use"
+        }
+    ]
+}

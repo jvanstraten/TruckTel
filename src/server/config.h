@@ -20,6 +20,18 @@ static constexpr auto CONFIG_INDEX_FILENAME = "index.html";
 /// Configuration file key for the port to listen on.
 static constexpr auto CONFIG_PORT = "port";
 
+/// Configuration file key for a human-friendly name for the app, displayed in
+/// the landing page.
+static constexpr auto CONFIG_TITLE = "title";
+
+/// Configuration file key for a subtitle for the app, displayed in the landing
+/// page.
+static constexpr auto CONFIG_SUBTITLE = "subtitle";
+
+/// Configuration file key for a URL that is displayed for the app on the
+/// landing page (e.g. github or SCS forum link).
+static constexpr auto CONFIG_LINK = "link";
+
 /// Port listed in the default configuration file.
 static constexpr auto CONFIG_DEFAULT_PORT = 8080;
 
@@ -100,10 +112,20 @@ struct InputChannelDescriptor {
 /// Description of all input channels.
 using InputChannelDescriptors = std::map<std::string, InputChannelDescriptor>;
 
+/// Metadata for the app, displayed in the landing page.
+struct Metadata {
+    std::string title;
+    std::string subtitle;
+    std::string link;
+};
+
 /// Configuration object for a TruckTel app.
 struct Configuration {
     /// Port to listen on.
     uint16_t port;
+
+    /// Metadata for the landing page.
+    Metadata metadata;
 
     /// Document root to serve from. Empty disables serving static files.
     std::filesystem::path document_root;

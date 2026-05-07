@@ -1,11 +1,14 @@
 #include <filesystem>
 #include <list>
+#include <map>
 #include <set>
 
 #include <scssdk_input.h>
 #include <scssdk_telemetry.h>
 
 #include "input.h"
+#include "landing/info.h"
+#include "landing/server_thread.h"
 #include "license.h"
 #include "logger.h"
 #include "mdns/server_thread.h"
@@ -37,8 +40,11 @@ static std::filesystem::path game_install_path;
 /// Detected trucktel configuration directory.
 static std::filesystem::path trucktel_path;
 
-/// List of application servers.
-static std::list<ServerThread> servers;
+/// Application servers, mapping from directory name to thread.
+static std::map<std::string, ServerThread> servers;
+
+/// Information object for the landing server.
+static LandingInfo landing_info;
 
 /// mDNS configuration.
 static std::unique_ptr<MdnsConfiguration> mdns_configuration;
@@ -103,41 +109,86 @@ static void common_init(const scs_sdk_init_params_v100_t &init_params) {
     // app, each with its own configuration file. If there is no app yet, a
     // default one is generated.
     servers.clear();
-    std::set<uint16_t> ports_used;
+    bool no_apps = true;
     for (auto const &entry :
          std::filesystem::directory_iterator{trucktel_path}) {
         if (!entry.is_directory()) continue;
+        no_apps = false;
         const auto &app_path = entry.path();
-        const auto app_name = app_path.filename().string();
-        Logger::info("Loading configuration for app: %s", app_name.c_str());
+        const auto app_directory = app_path.filename().string();
+        Logger::info(
+            "Loading configuration for app: %s", app_directory.c_str()
+        );
+
+        // Create server thread, which loads the configuration.
         try {
-            servers.emplace_back(app_path);
-            const auto port = servers.back().port();
-            if (ports_used.insert(port).second) {
-                Logger::info("%s will run on port %d", app_name.c_str(), port);
-                mdns_configuration->register_app(app_name, port);
-            } else {
-                Logger::error(
-                    "%s wants to use port %d, which is already in use.",
-                    app_name.c_str(), port
-                );
-                Logger::error(
-                    "App will be disabled. Assign it a different port in its "
-                    "config file!"
-                );
-                servers.pop_back();
-            }
+            servers.emplace(app_directory, app_path);
         } catch (const std::exception &e) {
             Logger::error(
-                "Failed to load %s app: %s", app_name.c_str(), e.what()
+                "Failed to load %s app: %s", app_directory.c_str(), e.what()
             );
+            LandingAppInfo app_info{};
+            app_info.error_message = e.what();
+            landing_info.apps.emplace(app_directory, std::move(app_info));
         }
     }
-    if (servers.empty()) {
-        const auto default_app_path = trucktel_path / DIR_APP_DEFAULT;
+    if (no_apps) {
         Logger::warn("No apps configured! Generating default...");
+        const auto default_app_path = trucktel_path / DIR_APP_DEFAULT;
         std::filesystem::create_directory(default_app_path);
-        servers.emplace_back(default_app_path);
+        servers.emplace(DIR_APP_DEFAULT, default_app_path);
+    }
+
+    // Generate app information structure for apps that loaded successfully.
+    for (const auto &[app_directory, server] : servers) {
+        const auto &metadata = server.metadata();
+        LandingAppInfo app_info{};
+        app_info.title = metadata.title;
+        app_info.subtitle = metadata.subtitle;
+        app_info.link = metadata.link;
+        app_info.port = server.port();
+        landing_info.apps.emplace(app_directory, std::move(app_info));
+    }
+
+    // Check for conflicts in port assignments.
+    std::set<uint16_t> ports_used;
+
+    // Claim a port for the landing server.
+    // TODO: make configurable
+    static constexpr uint16_t LANDING_PORT = 8000;
+    ports_used.insert(LANDING_PORT);
+    mdns_configuration->register_app(
+        std::string(TRUCKTEL_NAMESPACE) + "-landing", LANDING_PORT
+    );
+
+    // Claim ports for the servers. In case of conflict, first come first serve.
+    for (auto &[app_directory, app_info] : landing_info.apps) {
+        auto it = servers.find(app_directory);
+        if (it == servers.end()) continue;
+        const auto port = it->second.port();
+        if (ports_used.insert(port).second) {
+            // Port is free to use.
+            Logger::info("%s will run on port %d", app_directory.c_str(), port);
+
+            // Register the app and its port as a service with the mDNS server.
+            mdns_configuration->register_app(app_directory, port);
+        } else {
+            // Conflict!
+            Logger::error(
+                "%s wants to use port %d, which is already in use.",
+                app_directory.c_str(), port
+            );
+            Logger::error(
+                "App will be disabled. Assign it a different port in its "
+                "config file!"
+            );
+
+            // Destroy the server so we don't start it, and set an error message
+            // for the app in the landing page information object.
+            servers.erase(it);
+            app_info.error_message =
+                "port " + std::to_string(port) + " already in use";
+        }
     }
 }
 
@@ -160,25 +211,41 @@ static void common_shutdown() {
 /// mDNS server.
 static std::unique_ptr<MdnsServerThread> mdns_server;
 
+/// Landing page server.
+static std::unique_ptr<LandingServerThread> landing_server;
+
 /// Initializes the server thread. Must be called only when both sides of the
 /// plugin have finished initializing.
 static void server_init() {
-    if (servers.empty()) return;
-    Logger::info("Initializing server thread(s)...");
 
     // Start HTTP server for each application.
-    for (auto &server : servers) {
-        server.start();
+    if (!servers.empty()) {
+        Logger::info("Initializing %d app server thread(s)...", servers.size());
+        for (auto &[_, server] : servers) {
+            server.start();
+        }
     }
 
     // Initialize and start mDNS server.
+    Logger::info("Initializing mDNS server thread...");
     mdns_server = std::make_unique<MdnsServerThread>(*mdns_configuration);
     mdns_server->start();
+    landing_info.local_ip_address = mdns_server->get_local_ip_address();
+    landing_info.mdns_hostname = mdns_server->get_hostname();
+
+    // Initialize and start landing server.
+    // TODO: port should come from a config file, and be rejected for normal
+    //  apps to keep it free.
+    Logger::info("Initializing landing server thread...");
+    landing_server = std::make_unique<LandingServerThread>(8000, landing_info);
+    landing_server->start();
+
+    Logger::info("Server thread initialization complete.");
 }
 
 /// Instructs the servers to fetch new data from the recorder.
 static void server_update() {
-    for (auto &server : servers) {
+    for (auto &[_, server] : servers) {
         server.update();
     }
 }
@@ -189,20 +256,23 @@ static void server_shutdown() {
     Logger::info("Shutting down server(s)...");
 
     // Send stop signal to all server threads.
-    for (auto &server : servers) {
+    for (auto &[_, server] : servers) {
         server.stop();
     }
     if (mdns_server) mdns_server->stop();
+    if (landing_server) landing_server->stop();
 
     // Wait for all server threads to stop.
-    for (auto &server : servers) {
+    for (auto &[_, server] : servers) {
         server.join();
     }
     if (mdns_server) mdns_server->join();
+    if (landing_server) landing_server->join();
 
     // Destroy server thread managers.
     servers.clear();
     mdns_server.reset();
+    landing_server.reset();
 
     Logger::info("All servers have shut down");
 }
@@ -287,7 +357,7 @@ static void input_init(const scs_input_init_params_v100_t *const init_params) {
     // Initialize the input logic.
     Logger::info("Initializing input logic...");
     InputChannelDescriptors descriptors;
-    for (auto &server : servers) {
+    for (auto &[_, server] : servers) {
         for (const auto &item : server.get_input_descriptors()) {
             descriptors.emplace(item);
         }
@@ -343,6 +413,7 @@ SCSAPI_RESULT scs_telemetry_init(
         reinterpret_cast<const scs_telemetry_init_params_v101_t *>(params);
 
     try {
+        landing_info.game_version = init_params->common.game_name;
         telemetry_init(version, init_params);
         Logger::info("scs_telemetry_init() complete");
         return SCS_RESULT_ok;

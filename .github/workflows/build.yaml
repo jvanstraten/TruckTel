@@ -8,7 +8,28 @@ on:
     tags: v*
 
 jobs:
+  generate-landing:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: lts/*
+
+      - run: |
+          cd landing
+          ./bundle.py
+
+      - name: Upload
+        uses: actions/upload-artifact@v7
+        with:
+          name: output-landing
+          path: landing/include/real
+
   build:
+    needs:
+      - generate-landing
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -21,6 +42,11 @@ jobs:
           # version from git.
           fetch-depth: 0
           fetch-tags: true
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: output-landing
+          path: landing/include/real
 
       - name: Create Build Environment
         run: cmake -E make_directory ${{github.workspace}}/build

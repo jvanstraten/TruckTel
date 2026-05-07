@@ -544,7 +544,24 @@ void MdnsServer::init() {
     open_sockets();
     if (sockets.empty()) {
         Logger::warn("mDNS disabled: could not open any socket.");
+    } else {
+        Logger::info("mDNS server started.");
     }
+}
+
+std::string MdnsServer::get_local_ip_address() const {
+    if (local_ipv4) {
+        return sockaddr_to_string(*local_ipv4);
+    }
+    if (local_ipv6) {
+        return "[" + sockaddr_to_string(*local_ipv6) + "]";
+    }
+    return "";
+}
+
+std::string MdnsServer::get_hostname() const {
+    if (!configuration.is_mdns_enabled()) return "";
+    return configuration.get_hostname() + ".local";
 }
 
 void MdnsServer::run() {

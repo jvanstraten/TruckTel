@@ -45,6 +45,10 @@ private:
     /// Whether the server thread crashed. Guarded by state_mutex and state_cv.
     std::atomic<bool> worker_crashed = false;
 
+    /// The error message in case worker_crashed is set. Guarded by state_mutex
+    /// and state_cv.
+    std::string worker_error;
+
 public:
     /// Starts the server.
     void start(std::unique_ptr<AbstractWorker> &&new_worker) {
@@ -63,6 +67,7 @@ public:
                 {
                     std::unique_lock lock(state_mutex);
                     worker_crashed.store(true);
+                    worker_error = e.what();
                 }
                 state_cv.notify_all();
             }
@@ -83,6 +88,25 @@ public:
             return nullptr;
         }
         return reinterpret_cast<Worker *>(worker.get());
+    }
+
+    /// Returns a pointer to the worker if the object still exists and the
+    /// associated thread is (or might still be) alive.
+    const Worker *get_worker() const {
+        if (!worker) return nullptr;
+        if (worker_crashed.load()) return nullptr;
+        return reinterpret_cast<Worker *>(worker.get());
+    }
+
+    /// Returns an error message if the worker has crashed, or an empty string
+    /// if it hasn't (or doesn't seem to have).
+    [[nodiscard]] std::string get_error() const {
+        std::string error;
+        if (worker_crashed.load()) {
+            std::unique_lock lock(state_mutex);
+            error = worker_error;
+        }
+        return error;
     }
 
     /// Joins the worker thread. This should only be called once the worker is

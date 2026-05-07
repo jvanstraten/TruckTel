@@ -24,6 +24,9 @@ public:
     /// Returns which port is configured for this server.
     [[nodiscard]] uint16_t port() const;
 
+    /// Returns metadata for the landing page.
+    [[nodiscard]] const Metadata &metadata() const;
+
     /// Returns which inputs the app hosted by this server wants access to.
     [[nodiscard]] const InputChannelDescriptors &get_input_descriptors() const;
 
