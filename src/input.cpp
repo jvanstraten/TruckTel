@@ -1,5 +1,7 @@
 #include "input.h"
 
+#include <version.h>
+
 #include "logger.h"
 
 Input::Channel::Channel(std::string name, const InputChannelType channel_type)
@@ -197,8 +199,8 @@ Input::Input(
     }
 
     // Build device descriptor.
-    game_device_descriptor.name = "trucktel_jvs";
-    game_device_descriptor.display_name = "TruckTel virtual input";
+    game_device_descriptor.name = TRUCKTEL_NAMESPACE;
+    game_device_descriptor.display_name = TRUCKTEL_FULL_NAME;
     game_device_descriptor.type = SCS_INPUT_DEVICE_TYPE_semantical;
     game_device_descriptor.input_count = game_input_descriptors.size();
     game_device_descriptor.inputs = game_input_descriptors.data();

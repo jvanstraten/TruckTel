@@ -76,7 +76,7 @@ static void common_init(const scs_sdk_init_params_v100_t &init_params) {
     // everything other than the plugin itself into our own directory. This
     // will hold the log file, configuration, static content for the server,
     // etc.
-    trucktel_path = plugin_path / TRUCKTEL_DIRECTORY_NAME;
+    trucktel_path = plugin_path / TRUCKTEL_NAMESPACE;
 
     // If the trucktel directory doesn't exist yet, create it.
     if (!std::filesystem::is_directory(trucktel_path)) {

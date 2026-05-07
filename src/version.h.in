@@ -1,5 +1,9 @@
 #pragma once
 
+/// Hey you! Are you forking TruckTel? Please change or add to the the name
+/// in TRUCKTEL_FULL_NAME, and choose a new sufficiently unique identifier
+/// for TRUCKTEL_NAMESPACE. Thanks!
+
 /// Full name and version of TruckTel itself.
 static constexpr auto TRUCKTEL_FULL_NAME = "TruckTel @TRUCKTEL_VERSION_FULL@";
 
@@ -12,7 +16,10 @@ static constexpr auto TRUCKTEL_VERSION_MINOR = @TruckTel_VERSION_MINOR@;
 /// TruckTel patch version component.
 static constexpr auto TRUCKTEL_VERSION_PATCH = @TruckTel_VERSION_PATCH@;
 
-/// Name of TruckTel's working directory, containing the app directories and
-/// log file. This should get a new name (a version suffix, I guess) when
-/// breaking changes are made.
-static constexpr auto TRUCKTEL_DIRECTORY_NAME = "trucktel";
+/// Name of TruckTel's working directory (containing the app directories and
+/// log file) and other such things that should be unique to avoid conflicts
+/// with other, incompatible versions. This should get a new name (a version
+/// suffix or something) when breaking changes are made and/or TruckTel is
+/// forked. This should be lowercase ASCII with dashes; no other characters,
+/// this because it's used as default hostname for mDNS as well.
+static constexpr auto TRUCKTEL_NAMESPACE = "trucktel";

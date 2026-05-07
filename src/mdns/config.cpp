@@ -52,8 +52,7 @@ MdnsConfiguration::MdnsConfiguration(
                "change this if you're"
             << std::endl;
         ofs << "# doing a LAN party or something." << std::endl;
-        ofs << CONFIG_KEY_HOSTNAME << ": " << TRUCKTEL_DIRECTORY_NAME
-            << std::endl;
+        ofs << CONFIG_KEY_HOSTNAME << ": " << TRUCKTEL_NAMESPACE << std::endl;
         ofs << std::endl;
         ofs << "# Enable verbose logging for the mDNS subsystem." << std::endl;
         ofs << CONFIG_KEY_VERBOSE << ": false" << std::endl;
