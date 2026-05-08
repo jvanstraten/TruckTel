@@ -1,0 +1,24 @@
+{
+    "name": "trucktel-landing",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "build": "nuxt build",
+        "dev": "nuxt dev",
+        "generate": "nuxt generate",
+        "preview": "nuxt preview",
+        "postinstall": "nuxt prepare"
+    },
+    "dependencies": {
+        "@chenfengyuan/vue-qrcode": "^2.0.0",
+        "nuxt": "^4.4.2",
+        "qrcode": "^1.5.4",
+        "vue": "^3.5.34",
+        "vuetify": "^4.0.2",
+        "vuetify-nuxt-module": "^1.0.0-beta.1"
+    },
+    "devDependencies": {
+        "@nuxt/fonts": "^0.14.0",
+        "sass": "^1.98.0"
+    }
+}

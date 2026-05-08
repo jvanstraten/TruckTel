@@ -155,27 +155,31 @@ IncludeCategories:
   # must come first.
   - Regex: scssdk_value
     Priority: 1
-    SortPriority: 2
+    SortPriority: 3
     CaseSensitive: false
   - Regex: scssdk
     Priority: 2
-    SortPriority: 3
+    SortPriority: 4
     CaseSensitive: false
   - Regex: nlohmann|fkYAML
     Priority: 3
-    SortPriority: 4
+    SortPriority: 5
     CaseSensitive: false
   - Regex: <(asio|websocketpp)
     Priority: 4
-    SortPriority: 5
+    SortPriority: 6
     CaseSensitive: false
-  - Regex: <
+  - Regex: <windows.h>
     Priority: 5
     SortPriority: 1
     CaseSensitive: false
-  - Regex: '"'
+  - Regex: <
     Priority: 6
-    SortPriority: 6
+    SortPriority: 2
+    CaseSensitive: false
+  - Regex: '"'
+    Priority: 7
+    SortPriority: 7
     CaseSensitive: false
 IncludeIsMainRegex: (Test)?$
 IncludeIsMainSourceRegex: ''

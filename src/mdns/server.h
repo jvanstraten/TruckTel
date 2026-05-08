@@ -112,6 +112,14 @@ public:
     /// Initializes the server.
     void init() override;
 
+    /// Returns the primary local IP address that init() found, or empty if
+    /// neither an IPv4 nor an IPv6 address was found.
+    [[nodiscard]] std::string get_local_ip_address() const;
+
+    /// Returns the advertised hostname, or empty if mDNS is disabled or failed
+    /// to start.
+    [[nodiscard]] std::string get_hostname() const;
+
     /// Starts listening. This doesn't return until stop() is called from
     /// another thread.
     void run() override;

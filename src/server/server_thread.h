@@ -24,11 +24,18 @@ public:
     /// Returns which port is configured for this server.
     [[nodiscard]] uint16_t port() const;
 
+    /// Returns metadata for the landing page.
+    [[nodiscard]] const Metadata &metadata() const;
+
     /// Returns which inputs the app hosted by this server wants access to.
     [[nodiscard]] const InputChannelDescriptors &get_input_descriptors() const;
 
     /// Starts running the server.
     void start();
+
+    /// If the server died, this returns an error message. Otherwise, it returns
+    /// an empty string.
+    [[nodiscard]] std::string get_error();
 
     /// Tells the server to fetch new data from the recorders.
     void update();

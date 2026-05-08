@@ -23,6 +23,14 @@ public:
     /// Starts running the server.
     void start();
 
+    /// Returns the primary local IP address that init() found, or empty if
+    /// neither an IPv4 nor an IPv6 address was found.
+    [[nodiscard]] std::string get_local_ip_address() const;
+
+    /// Returns the advertised hostname, or empty if mDNS is disabled or failed
+    /// to start.
+    [[nodiscard]] std::string get_hostname() const;
+
     /// Tells the server to shut down. Does not join yet.
     void stop();
 
