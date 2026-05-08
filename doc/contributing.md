@@ -28,6 +28,20 @@ should all be generated.
 Note that CMake pulls in all third-party code using FetchContent. If the links
 break, you'll need to swap them out with working ones.
 
+## Landing page
+
+From a fresh checkout, a TruckTel build with CMake will use a placeholder for
+the landing page. To use the real landing page, you must build that first. For
+that, you'll need both `npm` and `python`. With both installed, you should be
+able to run [landing/bundle.py](../landing/bundle.py). Make sure to run it from
+the `landing` directory.
+
+Doing this generates `landing/include/real/landing_data.h`. This is listed in
+CMake's include path before the (much smaller)
+`landing/include/placeholder/landing_data.h` file, so once generated, the new
+file will be used. You might have to do a clean rebuild for CMake to detect the
+new file.
+
 ## Forking
 
 Historically, my attention span with things like this hasn't been all that

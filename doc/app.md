@@ -53,10 +53,12 @@ lowercase letters, numbers, dashes, or underscores.
 
 Among other things, that directory contains your `config.yaml` file. Think of
 this file as telling TruckTel how to run your app. If the file doesn't exist
-yet, TruckTel creates a default one.
+yet, TruckTel creates a default one. In addition, if no apps are installed at
+all, a placeholder app is generated to help you get started. The default
+`config.yaml` file includes all keys, and comments describing what they do.
 
-Most importantly, this file specifies which port the server of your app will
-be listening on. It should be a high number less than 65535 that should be
+Most importantly, `config.yaml` specifies which port the server of your app
+will be listening on. It should be a high number less than 65535 that should be
 unique to your app, otherwise conflicts can arise when multiple apps are
 installed. That being said, conflicts can arise anyway. You should ideally
 design your app such that the port doesn't matter; in that case, the user can
@@ -101,6 +103,10 @@ reusable if you're using Vue. For other frameworks you'll probably have to make
 adjustments, but it's not overly reliant on Vue and probably serves as a nice
 starting point.
 
+You can download a fully-built example app from TruckTel's
+[releases](https://github.com/jvanstraten/TruckTel/releases) using the
+`trucktel-example.zip` files.
+
 ## Distributing your app
 
 What you should probably provide to the user is a zip file containing
@@ -114,11 +120,9 @@ What you should probably provide to the user is a zip file containing
           - `index.html` landing page
 
 along with instructions for the player on where to extract this, or an
-installer to automate that. All these files (and a few more) are contained in
-the `trucktel.zip` files that you can download from the
+installer to automate that. You (or your CI) can download the libraries and
+license file using the `trucktel.zip` files in TruckTel's
 [releases](https://github.com/jvanstraten/TruckTel/releases).
-Note that TruckTel will also auto-generate these files if they don't exist
-yet when it's loaded by the game.
 
 Some more recommendations:
 
