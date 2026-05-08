@@ -7,6 +7,7 @@
 #include <scssdk_telemetry.h>
 
 #include "input.h"
+#include "landing/config.h"
 #include "landing/info.h"
 #include "landing/server_thread.h"
 #include "license.h"
@@ -27,7 +28,7 @@ static constexpr auto LOG_FILENAME = "log.txt";
 
 /// Default app that TruckTel generates when it's missing any app
 /// subdirectories.
-static constexpr auto DIR_APP_DEFAULT = "your-app-name";
+static constexpr auto DIR_APP_DEFAULT = "placeholder-app";
 
 //------------------------------------------------------------------------------
 // Common logic
@@ -42,6 +43,9 @@ static std::filesystem::path trucktel_path;
 
 /// Application servers, mapping from directory name to thread.
 static std::map<std::string, ServerThread> servers;
+
+/// Parsed configuration file for the landing server.
+static std::optional<LandingConfiguration> landing_config;
 
 /// Information object for the landing server.
 static LandingInfo landing_info;
@@ -117,7 +121,7 @@ static void common_init(const scs_sdk_init_params_v100_t &init_params) {
         const auto &app_path = entry.path();
         const auto app_directory = app_path.filename().string();
         Logger::info(
-            "Loading configuration for app: %s", app_directory.c_str()
+            "Loading configuration for %s app...", app_directory.c_str()
         );
 
         // Create server thread, which loads the configuration.
@@ -145,21 +149,29 @@ static void common_init(const scs_sdk_init_params_v100_t &init_params) {
         LandingAppInfo app_info{};
         app_info.title = metadata.title;
         app_info.subtitle = metadata.subtitle;
+        app_info.text = metadata.text;
         app_info.link = metadata.link;
+        app_info.disable_launcher = metadata.disable_launcher;
         app_info.port = server.port();
         landing_info.apps.emplace(app_directory, std::move(app_info));
     }
+
+    // Load the configuration file for the landing server.
+    Logger::info("Loading configuration for landing page...");
+    landing_config.emplace(trucktel_path);
 
     // Check for conflicts in port assignments.
     std::set<uint16_t> ports_used;
 
     // Claim a port for the landing server.
-    // TODO: make configurable
-    static constexpr uint16_t LANDING_PORT = 8000;
-    ports_used.insert(LANDING_PORT);
-    mdns_configuration->register_app(
-        std::string(TRUCKTEL_NAMESPACE) + "-landing", LANDING_PORT
-    );
+    if (landing_config && landing_config->is_enabled()) {
+        const auto port = landing_config->get_port();
+        Logger::info("Landing page will run on port %d", port);
+        ports_used.insert(port);
+        mdns_configuration->register_app(
+            std::string(TRUCKTEL_NAMESPACE) + "-landing", port
+        );
+    }
 
     // Claim ports for the servers. In case of conflict, first come first serve.
     for (auto &[app_directory, app_info] : landing_info.apps) {
@@ -221,8 +233,12 @@ static void server_init() {
     // Start HTTP server for each application.
     if (!servers.empty()) {
         Logger::info("Initializing %d app server thread(s)...", servers.size());
-        for (auto &[_, server] : servers) {
+        for (auto &[app_directory, server] : servers) {
             server.start();
+            const auto error = server.get_error();
+            if (!error.empty()) {
+                landing_info.apps.at(app_directory).error_message = error;
+            }
         }
     }
 
@@ -234,11 +250,13 @@ static void server_init() {
     landing_info.mdns_hostname = mdns_server->get_hostname();
 
     // Initialize and start landing server.
-    // TODO: port should come from a config file, and be rejected for normal
-    //  apps to keep it free.
-    Logger::info("Initializing landing server thread...");
-    landing_server = std::make_unique<LandingServerThread>(8000, landing_info);
-    landing_server->start();
+    if (landing_config && landing_config->is_enabled()) {
+        Logger::info("Initializing landing server thread...");
+        landing_server = std::make_unique<LandingServerThread>(
+            *landing_config, landing_info
+        );
+        landing_server->start();
+    }
 
     Logger::info("Server thread initialization complete.");
 }

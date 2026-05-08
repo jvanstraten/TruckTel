@@ -1,7 +1,7 @@
 {
     "pluginVersion": "TruckTel 0.1.0",
     "gameVersion": "Euro Truck Simulator Simulator",
-    "localIpAddress": "192.168.0.196",
+    "localIpAddress": null,
     "mdnsHostname": "trucktel.local",
     "apps": [
         {

@@ -96,6 +96,8 @@ add_library(trucktel SHARED
         src/server/database.cpp
         src/server/websocket.h
         src/server/websocket.cpp
+        src/landing/config.h
+        src/landing/config.cpp
         src/landing/server_thread.h
         src/landing/server_thread.cpp
         src/landing/server.h

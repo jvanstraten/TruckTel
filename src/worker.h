@@ -100,7 +100,7 @@ public:
 
     /// Returns an error message if the worker has crashed, or an empty string
     /// if it hasn't (or doesn't seem to have).
-    [[nodiscard]] std::string get_error() const {
+    [[nodiscard]] std::string get_error() {
         std::string error;
         if (worker_crashed.load()) {
             std::unique_lock lock(state_mutex);

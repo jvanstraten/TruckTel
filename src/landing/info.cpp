@@ -14,7 +14,9 @@ static nlohmann::json serialize_app_info(
     data[LANDING_API_APP_DIRECTORY] = app_directory;
     data[LANDING_API_TITLE] = serialize_string_or_null(info.title);
     data[LANDING_API_SUBTITLE] = serialize_string_or_null(info.subtitle);
+    data[LANDING_API_TEXT] = serialize_string_or_null(info.text);
     data[LANDING_API_LINK] = serialize_string_or_null(info.link);
+    data[LANDING_API_DISABLE_LAUNCHER] = info.disable_launcher;
     data[LANDING_API_PORT] = info.port;
     data[LANDING_API_ERROR_MESSAGE] =
         serialize_string_or_null(info.error_message);

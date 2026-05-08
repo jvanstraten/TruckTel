@@ -2,6 +2,7 @@
 
 #include <nlohmann/json.hpp>
 
+#include "config.h"
 #include "info.h"
 #include "server/wspp_config.h"
 #include "worker.h"
@@ -12,10 +13,10 @@ private:
     /// WebsocketPP server endpoint.
     wspp::Server endpoint;
 
-    /// Port to serve on.
-    const uint16_t port;
+    /// Configuration object for the landing page server.
+    const LandingConfiguration config;
 
-    /// Information object served to the landing page.
+    /// Stringified information object served to the landing page.
     const std::string info;
 
     /// Called by WebsocketPP when a request is made that the client does not
@@ -31,7 +32,7 @@ private:
 
 public:
     /// Constructor.
-    LandingServer(uint16_t port, const LandingInfo &info);
+    LandingServer(const LandingConfiguration &config, const LandingInfo &info);
 
     /// Initializes the server. Call from a worker thread.
     void init() override;

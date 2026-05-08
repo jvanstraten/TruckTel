@@ -29,6 +29,17 @@ void LandingServer::on_http(const wspp::connection_hdl &hdl) {
         return;
     }
 
+    // If the user wants to browse the installation directory, try to open a
+    // file browser and at least return the path.
+    if (path == LANDING_BROWSE_INSTALL_DIR) {
+        const auto trucktel_path = config.get_trucktel_path().string();
+        os_open(trucktel_path);
+        con->set_body(nlohmann::json(trucktel_path).dump());
+        con->append_header("content-type", LANDING_API_CONTENT_TYPE);
+        con->set_status(wspp::http::status_code::value::ok);
+        return;
+    }
+
     // Find the appropriate resource.
     const landing::Resource *resource = landing::resources;
     while (resource->path && strcmp(resource->path, path.c_str())) {
@@ -58,8 +69,10 @@ void LandingServer::on_shutdown() {
     endpoint.stop_listening();
 }
 
-LandingServer::LandingServer(const uint16_t port, const LandingInfo &info)
-    : port(port), info(serialize_landing_info(info).dump()) {}
+LandingServer::LandingServer(
+    const LandingConfiguration &config, const LandingInfo &info
+)
+    : config(config), info(serialize_landing_info(info).dump()) {}
 
 void LandingServer::init() {
     // Set up masks for logging.
@@ -87,11 +100,13 @@ void LandingServer::init() {
     endpoint.set_reuse_addr(true);
 
     // Start listening.
-    endpoint.listen(port);
+    endpoint.listen(config.get_port());
     endpoint.start_accept();
 
     // (Try to) open the landing page.
-    open_browser("http://localhost:" + std::to_string(port));
+    if (config.is_auto_open_enabled()) {
+        os_open("http://localhost:" + std::to_string(config.get_port()));
+    }
 }
 
 void LandingServer::run() {

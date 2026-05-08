@@ -33,6 +33,10 @@ public:
     /// Starts running the server.
     void start();
 
+    /// If the server died, this returns an error message. Otherwise, it returns
+    /// an empty string.
+    [[nodiscard]] std::string get_error();
+
     /// Tells the server to fetch new data from the recorders.
     void update();
 

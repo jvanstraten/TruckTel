@@ -14,9 +14,18 @@ struct LandingAppInfo {
     /// Friendly subtitle from the app's config.yaml, or empty if undefined.
     std::string subtitle;
 
+    /// Extra text shown in the popup dialog in the landing page for the app,
+    /// or empty if undefined.
+    std::string text;
+
     /// Link specified in the app's config.yaml (e.g. github or SCS forums), or
     /// empty if undefined.
     std::string link;
+
+    /// When set, the launcher dialog in the landing app does not show a link
+    /// or QR code for launching the app. Useful if the app doesn't use
+    /// TruckTel's static webserver and only connects from native apps.
+    bool disable_launcher;
 
     /// The port that the app is configured to run from.
     uint16_t port = 0;
@@ -49,6 +58,9 @@ static constexpr auto LANDING_INDEX = "index.html";
 /// Path of the JSON information resource.
 static constexpr auto LANDING_API_PATH = "/api/info.json";
 
+/// Path of the browse-install-dir resource.
+static constexpr auto LANDING_BROWSE_INSTALL_DIR = "/api/browse-install-dir";
+
 /// Content type of the JSON information resource.
 static constexpr auto LANDING_API_CONTENT_TYPE =
     "application/json; charset=utf-8";
@@ -62,6 +74,8 @@ static constexpr auto LANDING_API_APPS = "apps";
 static constexpr auto LANDING_API_APP_DIRECTORY = "appDirectory";
 static constexpr auto LANDING_API_TITLE = "title";
 static constexpr auto LANDING_API_SUBTITLE = "subtitle";
+static constexpr auto LANDING_API_TEXT = "text";
+static constexpr auto LANDING_API_DISABLE_LAUNCHER = "disableLauncher";
 static constexpr auto LANDING_API_LINK = "link";
 static constexpr auto LANDING_API_PORT = "port";
 static constexpr auto LANDING_API_ERROR_MESSAGE = "errorMessage";

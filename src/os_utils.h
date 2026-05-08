@@ -2,5 +2,6 @@
 
 #include <string>
 
-/// Tries to open localhost:port in a browser.
-void open_browser(const std::string &url);
+/// Tries to tell the operating system to "open" the given thing. Should work
+/// at least for opening URLs in web browsers.
+void os_open(const std::string &url);

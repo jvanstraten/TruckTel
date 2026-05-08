@@ -1,5 +1,6 @@
 #pragma once
 
+#include "config.h"
 #include "info.h"
 #include "worker.h"
 
@@ -13,15 +14,17 @@ class LandingServerThread {
     /// Managed thread that the server runs in.
     WorkerThread<LandingServer> thread;
 
-    /// Port on which the landing server listens.
-    const uint16_t port;
+    /// Configuration object for the landing server.
+    const LandingConfiguration &config;
 
     /// Information structure served to the landing page.
     const LandingInfo &info;
 
 public:
     /// Constructor.
-    explicit LandingServerThread(uint16_t port, const LandingInfo &info);
+    LandingServerThread(
+        const LandingConfiguration &config, const LandingInfo &info
+    );
 
     /// Starts running the server.
     void start();

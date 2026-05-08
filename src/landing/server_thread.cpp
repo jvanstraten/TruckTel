@@ -2,11 +2,13 @@
 
 #include "server.h"
 
-LandingServerThread::LandingServerThread(uint16_t port, const LandingInfo &info)
-    : port(port), info(info) {}
+LandingServerThread::LandingServerThread(
+    const LandingConfiguration &config, const LandingInfo &info
+)
+    : config(config), info(info) {}
 
 void LandingServerThread::start() {
-    thread.start(std::make_unique<LandingServer>(port, info));
+    thread.start(std::make_unique<LandingServer>(config, info));
 }
 
 void LandingServerThread::stop() {

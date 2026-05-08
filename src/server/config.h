@@ -28,9 +28,17 @@ static constexpr auto CONFIG_TITLE = "title";
 /// page.
 static constexpr auto CONFIG_SUBTITLE = "subtitle";
 
+/// Configuration file key for additional text for the app, displayed in the
+/// landing page popup.
+static constexpr auto CONFIG_TEXT = "text";
+
 /// Configuration file key for a URL that is displayed for the app on the
 /// landing page (e.g. github or SCS forum link).
 static constexpr auto CONFIG_LINK = "link";
+
+/// Configuration file key for disabling the link and QR code for launching the
+/// app.
+static constexpr auto CONFIG_DISABLE_LAUNCHER = "disable-launcher";
 
 /// Port listed in the default configuration file.
 static constexpr auto CONFIG_DEFAULT_PORT = 8080;
@@ -116,7 +124,9 @@ using InputChannelDescriptors = std::map<std::string, InputChannelDescriptor>;
 struct Metadata {
     std::string title;
     std::string subtitle;
+    std::string text;
     std::string link;
+    bool disable_launcher;
 };
 
 /// Configuration object for a TruckTel app.
