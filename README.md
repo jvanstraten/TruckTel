@@ -1,7 +1,7 @@
 # TruckTel: telemetry webserver for ETS2 and ATS
 
-This is a cross-platform plugin for Euro Truck Simulator 2 and (probably,
-untested) American Truck Simulator to bridge the
+This is a cross-platform plugin for Euro Truck Simulator 2 and American
+Truck Simulator to bridge the
 [SCS telemetry SDK](https://modding.scssoft.com/wiki/Documentation/Engine/SDK/Telemetry)
 to a REST/websocket webserver. It also supports "semantical input" via that
 API. With those things, you should be able to make e.g. a fully functional
@@ -27,14 +27,17 @@ plugin ecosystems like it. Here's a qualitative comparison:
 |                         | TruckTel                                                | ets2-telemetry-server                                                                                                                                                                     | scs-sdk-plugin                                                                                                                                                                                                   |
 |-------------------------|---------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | Links                   | [You are here](https://github.com/jvanstraten/TruckTel) | [Original](https://github.com/Funbit/ets2-telemetry-server) by Funbit, [reference version](https://github.com/Funbit/ets2-telemetry-server/tree/1a5e8abb669b0dc0fa0638f03bed55af120f03cf) | [Original](https://github.com/nlhans/ets2-sdk-plugin) by nlhans, [reference version](https://github.com/truckermudgeon/scs-sdk-plugin/tree/c8910d6e9a5ca0c2fa018942054263292cab19a4) (v1.12.1) by truckermudgeon |
-| Telemetry API           | ✅                                                                | ️⚠️ very old (there are probably newer forks) | ️✅                         |
-| Input API               | ✅                                                                | ❌                                           | ❌                         |
-| Supports Windows        | ✅                                                                | ✅                                           | ✅                         |
-| Supports Linux          | ✅                                                                | ❌                                           | ✅                         |
-| Supports MacOS          | ❌ (see [#12](https://github.com/jvanstraten/TruckTel/issues/12)) | ❌                                           | ✅                         |
-| Data via mmap           | ❌                                                                | ✅                                           | ✅                         |
-| Data via websocket/HTTP | ✅                                                                | ⚠️ external application                      | ❌ exist, but not included |
-| Generic webserver       | ✅                                                                | ⚠️ external application                      | ❌ exist, but not included |
+| Telemetry API           | ✅                                                                | ️⚠️ very old (there are probably newer forks) | ️✅                               |
+| Input API               | ✅                                                                | ❌                                           | ❌                               |
+| Supports Windows        | ✅                                                                | ✅                                           | ✅                               |
+| Supports Linux          | ✅                                                                | ❌                                           | ✅                               |
+| Supports MacOS          | ❌ (see [#12](https://github.com/jvanstraten/TruckTel/issues/12)) | ❌                                           | ✅                               |
+| Data via mmap           | ❌                                                                | ✅                                           | ✅                               |
+| Data via websocket/HTTP | ✅                                                                | ⚠️ external application                      | ❌ might exist, but not included |
+| Generic webserver       | ✅                                                                | ⚠️ external application                      | ❌ might exist, but not included |
+
+(note: this is per my best understanding. If I'm misrepresenting something,
+make an issue and I'll update the table.)
 
 Where the existing solutions provide a low-level interface between the game and
 another native application on the same machine (specifically, memory-mapped
