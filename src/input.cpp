@@ -200,7 +200,7 @@ Input::Input(
 
     // Build device descriptor.
     game_device_descriptor.name = TRUCKTEL_NAMESPACE;
-    game_device_descriptor.display_name = TRUCKTEL_FULL_NAME;
+    game_device_descriptor.display_name = TRUCKTEL_NAMESPACE;
     game_device_descriptor.type = SCS_INPUT_DEVICE_TYPE_semantical;
     game_device_descriptor.input_count = game_input_descriptors.size();
     game_device_descriptor.inputs = game_input_descriptors.data();
